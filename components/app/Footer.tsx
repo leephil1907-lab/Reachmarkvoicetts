@@ -1,0 +1,1 @@
+export function Footer(){return <footer className="border-t border-border"><div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-6 text-xs text-muted sm:px-6 lg:px-8"><span>© {new Date().getFullYear()} Reachmark Voice</span><span>AI voice infrastructure, built to evolve.</span></div></footer>}
