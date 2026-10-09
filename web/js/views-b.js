@@ -1,15 +1,15 @@
 // Reachmark Audio — explore views: discover, dubbing, lip sync, agents, calls, account, support, engines.
-import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn } from './core.js';
+import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn, fileTooBig } from './core.js';
 import { Player, serverTTS, browserSpeak, pickFile, LipRenderer, AC } from './audio.js';
 import { myVoices, models, voicePicker, playerRow, exprControls, LANGS } from './views-a.js';
 import { respond } from './brain.js';
 
 /* ================= DISCOVER ================= */
 const TRENDING = [
-  { name: 'Super Smash Bros. 4/Ultimate Announcer', flag: '🇺', tags: ['Male', 'Old', 'Character voice', 'Entertainment'], av: 'vio', p: { semitones: -6, rate: 1.05, fx: 'echo' } },
+  { name: 'Super Smash Bros. 4/Ultimate Announcer', flag: '🇺🇸', tags: ['Male', 'Old', 'Character voice', 'Entertainment'], av: 'vio', p: { semitones: -6, rate: 1.05, fx: 'echo' } },
   { name: 'Guyzo', flag: '🇮🇹', tags: ['Male', 'Old', 'Narration', 'Advertising'], av: 'warm', p: { semitones: -3, rate: 0.95 } },
   { name: 'Verity', flag: '🇺🇸', tags: ['Male', 'Young', 'Conversational', 'Character voice'], av: '', p: { semitones: 2, rate: 1.08 } },
-  { name: 'Verity Noir', flag: '🇺', tags: ['Male', 'Middle-aged', 'Character voice', 'Entertainment'], av: 'warm', p: { semitones: -2, rate: 1.0 } },
+  { name: 'Verity Noir', flag: '🇺🇸', tags: ['Male', 'Middle-aged', 'Character voice', 'Entertainment'], av: 'warm', p: { semitones: -2, rate: 1.0 } },
   { name: 'Mortal Kombat', flag: '🇺🇸', tags: ['Male', 'Old', 'Character voice', 'Deep', 'Low'], av: 'vio', p: { semitones: -9, rate: 0.9, fx: 'echo' } },
 ];
 const RECOMMENDED = [
@@ -57,7 +57,7 @@ routes['/discover'] = {
         h('div', { class: 'r-end' }, h('span', { class: 'badge' }, db.voices.length + '/' + slots))),
       h('div', { class: 'row tap', style: { borderRadius: '18px', background: 'var(--surface2)', padding: '12px 14px' }, onclick: () => window.__createSheet?.() },
         h('span', { class: 'avatar', style: { background: 'var(--pill)', color: 'var(--pill-ink)' } }, icon('plus')),
-        h('div', {}, h('b', {}, 'Create new voice'), h('small', {}, 'Design or clone a voice in seconds')),
+        h('div', {}, h('b', {}, 'Create new voice'), h('small', {}, 'Design or match a voice in seconds')),
         h('div', { class: 'r-end' }, icon('chevron'))),
       h('div', { style: { position: 'sticky', top: '0', zIndex: 4, padding: '12px 0', background: 'color-mix(in srgb, var(--canvas) 86%, transparent)', backdropFilter: 'blur(10px)', display: 'flex', gap: '8px' } },
         search, h('button', { class: 'iconbtn', html: icons.filter, onclick: () => sheet('Filter voices', b => { b.append(h('p', { class: 'muted tiny' }, 'Gender, age, use-case and language filters sync with the worldwide catalogue on Plus.')); }) })),
@@ -196,7 +196,7 @@ routes['/studio/lip'] = {
             try { const { url } = await serverTTS({ text: ta.value, voiceId: state.defaultVoiceId }); await useUrl(url); } catch (err) { toast(err.message, 'close'); }
             e.target.replaceChildren(icon('spark'), 'Synthesize line');
           } }, icon('spark'), 'Synthesize line'),
-          h('button', { class: 'btn sm', onclick: () => pickFile('audio/*', f => useUrl(URL.createObjectURL(f))) }, icon('upload'), 'Upload audio')))));
+          h('button', { class: 'btn sm', onclick: () => pickFile('audio/*', f => { if (!fileTooBig(f)) useUrl(URL.createObjectURL(f)); }) }, icon('upload'), 'Upload audio')))));
   },
 };
 
@@ -357,11 +357,12 @@ routes['/support'] = {
   top: () => ({ back: true, title: 'Support Center', sub: 'Live help, worldwide' }),
   view: async ({ node }) => {
     const faq = [
-      ['How do I clone my voice?', 'Create → Instant Voice Clone. Record 10 seconds in a quiet room (or upload a clean sample), name it, and the encoder matches the nearest neural voice. Your clone then works in every studio and speaks all supported languages.'],
+      ['How does Voice Match work?', 'Create → Voice Match. Record 10 seconds in a quiet room (or upload a clean sample) and the analyser measures your pitch and pace, then tunes the nearest neural voice to you. It is a fast voice match — true speaker-embedding cloning plugs into the same endpoint when a GPU engine is attached.'],
       ['How does voice translation work?', 'Your voice character (pitch, pace, colour) is stored as a profile. In Text to Speech, pick an output language — English, French, Spanish or German — and the same character performs in that language.'],
-      ['What do credits cover?', 'New accounts get 10,000 credits. TTS ≈ 1 per 40 characters, voice change 20, cloning 150, separation 30, dubbing 15 per take. Your balance is in the top bar.'],
-      ['Can I use renders commercially?', 'Free plan renders are for evaluation. The Plus plan (Account → Upgrade) includes commercial use, 200 minutes and 10 voice slots.'],
-      ['My microphone is blocked.', 'Browsers require permission per site. Allow microphone in site settings, then retry — or upload an audio file instead; every studio accepts uploads.'],
+      ['What do credits cover?', 'New accounts get 10,000 credits. TTS ≈ 1 per 40 characters, voice change 20, Voice Match 150, Quick Vocal Remove 30, dubbing 15 per take. Failed renders refund automatically. Your balance is in the top bar.'],
+      ['What is Quick Vocal Remove?', 'A center-channel reduction for stereo mixes: it extracts a centered-vocal bus and a karaoke bus. Best on mixes with centered lead vocals; a Demucs-class engine plugs into the same endpoint when attached.'],
+      ['Can I use renders commercially?', 'Free plan renders are for evaluation. The Plus plan (Account → Upgrade, one 7-day trial per account) includes commercial use, 200 minutes and 10 voice slots.'],
+      ['My microphone is blocked.', 'Browsers require permission per site. Allow microphone in site settings, then retry — or upload an audio file instead (20 MB max); every studio accepts uploads.'],
     ];
     const faqBox = h('div', { class: 'stack', style: { gap: '8px' } });
     faq.forEach(([q, ans]) => {

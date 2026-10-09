@@ -321,6 +321,11 @@ export function emptyState(title, sub) {
     h('b', {}, title), sub ? h('span', { class: 'tiny faint', style: { display: 'block', marginTop: '8px', maxWidth: '280px' } }, sub) : null);
 }
 export const fmtTime = s => { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+export function fileTooBig(f) {
+  if (f && f.size > MAX_UPLOAD_BYTES) { toast('File too large — 20 MB max', 'close'); return true; }
+  return false;
+}
 export const fmtDate = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 export function download(url, name) { const a = h('a', { href: url, download: name }); document.body.append(a); a.click(); a.remove(); }
 export const fileToDataUrl = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });

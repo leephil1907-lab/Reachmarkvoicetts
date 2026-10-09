@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Downloads the Piper neural voices used by Reachmark Audio (en/fr/es/de).
 set -e
-dir="$(cd "$(dirname "$0")" && pwd)/piper-voices"
+dir="${PIPER_VOICES_DIR:-$(cd "$(dirname "$0")" && pwd)/piper-voices}"
 mkdir -p "$dir" && cd "$dir"
 base=https://huggingface.co/rhasspy/piper-voices/resolve/main
 for v in en/en_US/lessac/medium/en_US-lessac-medium \

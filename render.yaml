@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: reachmark-audio
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: reachmark-data
+      mountPath: /data
+      sizeGB: 2

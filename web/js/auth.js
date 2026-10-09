@@ -9,7 +9,7 @@ routes['/auth'] = {
     const err = h('div', { class: 'auth-err', hidden: true });
     const nameF = h('input', { class: 'input', placeholder: 'Full name', autocomplete: 'name' });
     const emailF = h('input', { class: 'input', placeholder: 'Email address', type: 'email', autocomplete: 'email' });
-    const passF = h('input', { class: 'input', placeholder: 'Password (6+ characters)', type: 'password', autocomplete: mode === 'login' ? 'current-password' : 'new-password' });
+    const passF = h('input', { class: 'input', placeholder: 'Password (8+ characters)', type: 'password', autocomplete: mode === 'login' ? 'current-password' : 'new-password' });
     const submit = h('button', { class: 'btn primary block', type: 'submit' }, icon('spark'), 'Log in');
     const tabs = h('div', { class: 'authtabs' },
       h('button', { class: 'on', onclick: () => setMode('login') }, 'Log in'),
@@ -51,7 +51,7 @@ routes['/auth'] = {
         h('h1', {}, 'Your voice, every language, one platform.'),
         h('p', { class: 'muted' }, 'Clone, design, dub, lip-sync and call with AI voices — powered by a merged engine hub of five world-class voice codebases.'),
         h('div', { class: 'auth-feats' },
-          ['🧬 Instant voice cloning from 10 seconds', '🌍 Voice translation across 4+ languages', ' Lip sync with WebM video export', '🤖 Character agents that chat & call'].map(t => h('div', { class: 'auth-feat' }, t))),
+          ['🧬 Voice matching from 10 seconds of audio', '🌍 Voice translation across 4+ languages', ' Lip sync with WebM video export', '🤖 Character agents that chat & call'].map(t => h('div', { class: 'auth-feat' }, t))),
         h('div', { class: 'bars' }, [0, 1, 2, 3, 4, 5, 6].map((i) => h('i', { style: { height: 8 + (i % 4) * 6 + 'px', animationDelay: i * 0.1 + 's' } })))),
       h('div', { class: 'auth-card card' },
         tabs, form,
@@ -67,7 +67,7 @@ export function welcomeSheet() {
       h('div', { class: 'card', style: { background: 'linear-gradient(140deg, color-mix(in srgb, var(--lime) 16%, var(--card)), var(--card))', display: 'flex', gap: '12px', alignItems: 'center' } },
         icon('spark'), h('div', {}, h('b', {}, '10,000 ✦ credits added'), h('small', { class: 'muted' }, 'Your signup gift — spend them across every studio.'))),
       h('div', { class: 'sect' }, 'Start in 3 steps'),
-      h('div', { class: 'row tap', onclick: () => { close(); navigate('/studio/clone'); } }, h('div', { class: 'r-ico' }, icon('copy')), h('div', {}, h('b', {}, '1 · Clone your voice'), h('small', {}, 'Record 10 seconds — it becomes yours everywhere'))),
+      h('div', { class: 'row tap', onclick: () => { close(); navigate('/studio/clone'); } }, h('div', { class: 'r-ico' }, icon('copy')), h('div', {}, h('b', {}, '1 · Match your voice'), h('small', {}, 'Record 10 seconds — the nearest neural voice is tuned to you'))),
       h('div', { class: 'row tap', onclick: () => { close(); navigate('/studio/tts'); } }, h('div', { class: 'r-ico' }, icon('text')), h('div', {}, h('b', {}, '2 · Make it speak'), h('small', {}, 'Any text, any language, your character intact'))),
       h('div', { class: 'row tap', onclick: () => { close(); navigate('/agent/guide'); } }, h('div', { class: 'r-ico' }, icon('bot')), h('div', {}, h('b', {}, '3 · Meet your Guide'), h('small', {}, 'The platform AI assistant answers anything, anytime'))),
       h('p', { class: 'tiny faint', style: { marginTop: '12px' } }, 'Tip: press Ctrl / Cmd + K anywhere for the command palette.'));

@@ -66,7 +66,7 @@ async function status() {
     let state = 'offline', detail = '';
     const vendored = e.dir ? fs.existsSync(path.join(VENDOR, e.dir)) : false;
     if (e.id === 'reachmark-core') { state = 'online'; detail = 'serving'; }
-    else if (e.id === 'piper') { state = models.length ? 'online' : 'offline'; detail = models.length + ' neural voices loaded'; }
+    else if (e.id === 'piper') { const st = tts.status(); state = st.ready ? 'online' : 'offline'; detail = st.voices + ' neural voices loaded · 30s synth guard · queue capped'; }
     else if (e.kind === 'gpu') { state = torch ? 'ready' : 'standby'; detail = torch ? 'torch ' + torch : 'needs GPU/torch — CPU fallback active'; }
     else if (e.id === 'voicestudio') { state = 'merged'; detail = 'patterns ported into UI + desktop shell'; }
     return { ...e, vendored, state, detail };

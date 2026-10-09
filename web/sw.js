@@ -6,6 +6,7 @@ const SHELL = [
   '/', '/index.html', '/css/app.css', '/manifest.webmanifest',
   '/js/main.js', '/js/core.js', '/js/audio.js', '/js/brain.js', '/js/auth.js', '/js/views-a.js', '/js/views-b.js',
   '/assets/favicon.svg', '/assets/icon.png', '/assets/icon-512.png', '/assets/icon-192.png', '/assets/icon-96.png',
+  '/assets/icon-maskable-512.png', '/assets/icon-maskable-192.png',
 ];
 
 self.addEventListener('install', e => {

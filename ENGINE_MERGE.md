@@ -55,3 +55,15 @@ RTVC/MockingBird/ChatterBox adapters with the same request contracts — no UI c
 - **Platform Guide agent**: seeded into every account at signup with an 18-fact product knowledge base; reachable via Support Center live chat and support-session calls.
 - **Support Center**: live chat, voice support sessions, FAQ accordion, and the contact addresses reachmarkofficial@gmail.com / support@reachmarkdigital.com.
 - **UX layer**: command palette (Ctrl/Cmd+K), animated dropdown menus, loading skeletons, dashboard stats, onboarding sheet, focus-visible rings — motion rules still follow `docs/DESIGN_SYSTEM.md` from the original repo.
+
+## v1.2 — production hardening (post-audit)
+- SQLite (better-sqlite3) replaces whole-file JSON: users, sessions, voices, agents, history, renders, rate limits; WAL mode; `DATA_DIR` env for persistent disks.
+- Atomic credit transactions with exact refunds on any paid-route failure; inputs validated/decoded **before** charging.
+- Trials: one per account (`trial_used`), expiry enforced on every authenticated request; slot limits from the effective plan.
+- Auth: async scrypt (N=16384) + `timingSafeEqual`, 8+ char passwords, 5-attempt/15-min rate limits per IP+email, `Secure` cookies behind HTTPS.
+- Headers: CSP, nosniff, X-Frame-Options DENY, Referrer-Policy, HSTS on HTTPS; wildcard CORS removed; real 404s (SPA fallback only for extensionless routes).
+- Piper: 30 s SIGKILL timeout, per-user concurrency 1, capped global queue → 429.
+- Ownership: renders served only to their owner; whitelisted fields on voice/agent/history writes; 20 MB upload cap client + server.
+- Deploy: Dockerfile (python3 + piper-tts), docker-entrypoint (voice download to persistent disk), render.yaml with 2 GB disk, root package.json, `/api/health` reports piper/db/dataDir.
+- Honest labels: **Voice Match** and **Quick Vocal Remove** across UI, manifest, Guide knowledge and README; GPU engine slots (XTTS/OpenVoice/Demucs) documented as plug-in replacements on the same endpoints.
+- PWA: padded maskable icons (80% safe zone), pinch-zoom enabled, flag emoji repaired.

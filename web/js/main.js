@@ -15,7 +15,7 @@ document.body.append(splash);
 
 /* ---------- sidebar ---------- */
 const NAV = [
-  ['Studio', [['/studio/tts', 'text', 'Text to Speech'], ['/studio/changer', 'swap', 'Voice Changer'], ['/studio/clone', 'copy', 'Instant Voice Clone'], ['/studio/design', 'wand', 'Voice Design'], ['/studio/dub', 'globe', 'Dubbing Studio'], ['/studio/lip', 'film', 'Lip Sync Studio'], ['/studio/separate', 'separate', 'Audio Separation']]],
+  ['Studio', [['/studio/tts', 'text', 'Text to Speech'], ['/studio/changer', 'swap', 'Voice Changer'], ['/studio/clone', 'copy', 'Voice Match'], ['/studio/design', 'wand', 'Voice Design'], ['/studio/dub', 'globe', 'Dubbing Studio'], ['/studio/lip', 'film', 'Lip Sync Studio'], ['/studio/separate', 'separate', 'Quick Vocal Remove']]],
   ['Explore', [['/discover', 'compass', 'Discover Voices'], ['/agents', 'bot', 'Character Agents']]],
   ['Help', [['/support', 'lifebuoy', 'Support Center']]],
   ['System', [['/engines', 'cpu', 'Engine Hub'], ['/account', 'user', 'Account']]],
@@ -48,12 +48,12 @@ export function createSheet() {
   sheet('Create', (box, close) => {
     const rows = [
       ['text', 'Text to Speech', 'Type it, hear it in any voice & language', '/studio/tts'],
-      ['copy', 'Instant Voice Clone', 'Record 10s of audio, clone it instantly.', '/studio/clone'],
+      ['copy', 'Voice Match', 'Match a neural voice to you from 10s of audio', '/studio/clone'],
       ['wand', 'Voice Design', 'Describe the voice in plain text.', '/studio/design'],
       ['swap', 'Voice Changer', 'Upload or record, convert the voice', '/studio/changer'],
       ['globe', 'Dubbing Studio', 'One script, every language', '/studio/dub'],
       ['film', 'Lip Sync Studio', 'Animate a character with audio', '/studio/lip'],
-      ['separate', 'Audio Separation', 'Split vocals from the mix', '/studio/separate'],
+      ['separate', 'Quick Vocal Remove', 'Center-channel vocal reduction (stereo)', '/studio/separate'],
       ['bot', 'Character Agent', 'Build a persona that talks & calls', '/agents'],
     ];
     for (const [ic, b, s, path] of rows) {

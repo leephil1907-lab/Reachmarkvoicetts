@@ -1,5 +1,5 @@
 // Reachmark Audio — studio views: dashboard, TTS (with voice translation), changer, clone, design, separation.
-import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, removeHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, db, api, addVoice, refreshVoices, skel, skelRows, dropdown, setCredits, userMenuBtn } from './core.js';
+import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, removeHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, db, api, addVoice, refreshVoices, skel, skelRows, dropdown, setCredits, userMenuBtn, fileTooBig } from './core.js';
 import { Player, Recorder, serverTTS, browserSpeak, pickFile, recordBlobToWavData } from './audio.js';
 
 /* ---------- shared data ---------- */
@@ -88,7 +88,7 @@ routes['/home'] = {
       h('div', { class: 'stat' }, h('span', { class: 's-ico vio' }, icon('wave')), h('b', {}, String(db.history.length)), h('small', {}, 'renders')),
       h('div', { class: 'stat' }, h('span', { class: 's-ico cyan' }, icon('clock')), h('b', {}, (db.user?.minutes || 0).toFixed(1)), h('small', {}, 'studio minutes')));
     const quick = h('div', { class: 'qgrid', 'data-stag': '' },
-      [['/studio/tts', 'text', 'Text to Speech'], ['/studio/clone', 'copy', 'Clone a voice'], ['/studio/changer', 'swap', 'Voice Changer'], ['/studio/dub', 'globe', 'Dubbing'], ['/studio/lip', 'film', 'Lip Sync'], ['/studio/design', 'wand', 'Voice Design']]
+      [['/studio/tts', 'text', 'Text to Speech'], ['/studio/clone', 'copy', 'Voice Match'], ['/studio/changer', 'swap', 'Voice Changer'], ['/studio/dub', 'globe', 'Dubbing'], ['/studio/lip', 'film', 'Lip Sync'], ['/studio/design', 'wand', 'Voice Design']]
         .map(([path, ic, label]) => h('button', { class: 'qcard', onclick: () => navigate(path) }, icon(ic), h('span', {}, label))));
     const hs = h('div', { class: 'hscroll', 'data-stag': '' }, skel({ width: '112px', height: '132px' }), skel({ width: '112px', height: '132px' }));
     (async () => {
@@ -115,7 +115,7 @@ routes['/home'] = {
       }
     })();
     const tabs = ['tts', 'vc', 'sep', 'dub', 'lip', 'clone'];
-    const labels = { tts: 'Text to Speech', vc: 'Voice Changer', sep: 'Audio Separation', dub: 'Dubbing', lip: 'Lip Sync', clone: 'Clones' };
+    const labels = { tts: 'Text to Speech', vc: 'Voice Changer', sep: 'Quick Vocal Remove', dub: 'Dubbing', lip: 'Lip Sync', clone: 'Voice Matches' };
     const pills = h('div', { class: 'pills' });
     const list = h('div', { class: 'stack', style: { marginTop: '10px' } }, skelRows(3));
     let cur = 'tts';
@@ -254,7 +254,7 @@ routes['/studio/changer'] = {
       toast('Recording… tap again to stop', 'mic');
     };
     const dock = h('div', { class: 'dock' },
-      h('button', { class: 'btn', onclick: () => pickFile('audio/*', f => setSource(f, f.name)) }, icon('upload'), 'Upload'),
+      h('button', { class: 'btn', onclick: () => pickFile('audio/*', f => { if (!fileTooBig(f)) setSource(f, f.name); }) }, icon('upload'), 'Upload'),
       recBtn, go);
     node.append(h('div', { 'data-stag': '' }, art,
       h('div', { class: 'hero-title' }, 'Voice Changer'),
@@ -268,8 +268,8 @@ routes['/studio/changer'] = {
 
 /* ================= INSTANT VOICE CLONE ================= */
 routes['/studio/clone'] = {
-  title: 'Instant Voice Clone', tab: 'home',
-  top: () => ({ back: true, title: 'Instant Voice Clone', sub: 'Encoder → embed → match · speaks every language' }),
+  title: 'Voice Match', tab: 'home',
+  top: () => ({ back: true, title: 'Voice Match', sub: 'Pitch & pace analysis → nearest neural voice, tuned to you' }),
   view: async ({ node }) => {
     const ring = h('div', { class: 'recring' }, h('button', { class: 'mic', html: icons.mic }));
     const timeLab = h('div', { class: 'rectime' }, 'Tap the mic · 10 seconds is enough');
@@ -304,30 +304,32 @@ routes['/studio/clone'] = {
     });
     const flow = h('div', { class: 'flow' },
       h('div', { class: 'node' }, h('b', {}, 'Sample'), '10s audio'), h('div', { class: 'arr' }, icon('chevron')),
-      h('div', { class: 'node' }, h('b', {}, 'Encoder'), 'F0 + pace analysis'), h('div', { class: 'arr' }, icon('chevron')),
-      h('div', { class: 'node' }, h('b', {}, 'Embed'), 'voice profile'), h('div', { class: 'arr' }, icon('chevron')),
+      h('div', { class: 'node' }, h('b', {}, 'Analyse'), 'F0 + pace'), h('div', { class: 'arr' }, icon('chevron')),
+      h('div', { class: 'node' }, h('b', {}, 'Profile'), 'pitch · speed · colour'), h('div', { class: 'arr' }, icon('chevron')),
       h('div', { class: 'node' }, h('b', {}, 'Match'), 'nearest neural voice'), h('div', { class: 'arr' }, icon('chevron')),
-      h('div', { class: 'node' }, h('b', {}, 'Clone'), 'speaks 5 languages'));
+      h('div', { class: 'node' }, h('b', {}, 'Ready'), 'speaks 5 languages'));
     const cloneBtn = h('button', { class: 'btn lime block', disabled: true, onclick: async () => {
-      cloneBtn.replaceChildren(h('i', { class: 'spin' }), 'Cloning…'); cloneBtn.disabled = true;
+      cloneBtn.replaceChildren(h('i', { class: 'spin' }), 'Matching…'); cloneBtn.disabled = true;
       try {
-        const { voice } = await api('/api/clone', { method: 'POST', body: { name: nameIn.value || 'Cloned voice', note: noteIn.value, sample: sampleData } });
+        const { voice } = await api('/api/clone', { method: 'POST', body: { name: nameIn.value || 'Matched voice', note: noteIn.value, sample: sampleData } });
         await refreshVoices();
         state.defaultVoiceId = voice.id; save();
         await pushHistory({ kind: 'clone', title: voice.name, url: voice.sample, meta: voice.desc });
-        modal('Voice cloned ✨', (box, close) => {
+        modal('Voice matched ✨', (box, close) => {
           box.append(h('p', { class: 'muted' }, voice.name + ' is live. ' + voice.desc + '. It is now your default voice — and it can speak English, French, Spanish and German with your character intact.'),
             h('div', { class: 'stack', style: { marginTop: '12px' } },
               h('button', { class: 'btn primary block', onclick: () => { close(); navigate('/studio/tts'); } }, 'Try it in Text to Speech'),
               h('button', { class: 'btn block', onclick: () => { close(); navigate('/agents'); } }, 'Build an agent with it')));
         });
       } catch (e) { toast(e.message, 'close'); }
-      cloneBtn.replaceChildren(icon('copy'), 'Clone it instantly · 150 ✦'); cloneBtn.disabled = !sampleData;
-    } }, icon('copy'), 'Clone it instantly · 150 ✦');
+      cloneBtn.replaceChildren(icon('copy'), 'Match this voice · 150 ✦'); cloneBtn.disabled = !sampleData;
+    } }, icon('copy'), 'Match this voice · 150 ✦');
     node.append(h('div', { 'data-stag': '' },
+      h('div', { class: 'card flat muted tiny' }, 'Honest labelling: Voice Match measures the pitch and pace of your sample and tunes the closest neural voice to you — a fast, usable match. True speaker-embedding cloning (XTTS / OpenVoice) plugs into this same endpoint automatically when a GPU engine is attached in Engine Hub.'),
       h('div', { class: 'card flat center' }, ring, levelBar, timeLab,
         h('div', { style: { display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' } },
           h('button', { class: 'btn sm', onclick: () => pickFile('audio/*', async f => {
+            if (fileTooBig(f)) return;
             sampleData = await recordBlobToWavData(f);
             srcBox.replaceChildren();
             const { row, pl } = playerRow('Reference sample', URL.createObjectURL(f));
@@ -402,11 +404,12 @@ routes['/studio/design'] = {
 
 /* ================= AUDIO SEPARATION ================= */
 routes['/studio/separate'] = {
-  title: 'Audio Separation', tab: 'home',
-  top: () => ({ back: true, title: 'Audio Separation', sub: 'Center-channel extraction · stereo in' }),
+  title: 'Quick Vocal Remove', tab: 'home',
+  top: () => ({ back: true, title: 'Quick Vocal Remove', sub: 'Center-channel reduction · stereo in' }),
   view: async ({ node }) => {
     const out = h('div', { class: 'stack' });
     const btn = h('button', { class: 'btn primary block', onclick: () => pickFile('audio/*', async f => {
+      if (fileTooBig(f)) return;
       btn.replaceChildren(h('i', { class: 'spin' }), 'Separating…'); btn.disabled = true;
       const data = await recordBlobToWavData(f);
       try {
@@ -422,7 +425,7 @@ routes['/studio/separate'] = {
       btn.replaceChildren(icon('separate'), 'Choose stereo audio'); btn.disabled = false;
     }) }, icon('separate'), 'Choose stereo audio · 30 ✦');
     node.append(h('div', { 'data-stag': '' },
-      h('div', { class: 'card flat muted tiny' }, 'Splits a stereo mix into a center-extracted vocal bus and a side (karaoke) bus using a per-frame mid/side mask — the separation service shape ported from VoiceStudio.'),
+      h('div', { class: 'card flat muted tiny' }, 'Honest labelling: Quick Vocal Remove uses center-channel reduction — it pulls centered lead vocals out of a stereo mix and leaves a karaoke bus. It shines on mixes with centered vocals; a Demucs-class source-separation engine plugs into this same endpoint when attached.'),
       h('div', { style: { height: '14px' } }), btn, out));
   },
 };
