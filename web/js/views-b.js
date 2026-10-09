@@ -1,8 +1,7 @@
 // Reachmark Audio — explore views: discover, dubbing, lip sync, agents, calls, account, support, engines.
-import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn, fileTooBig } from './core.js';
+import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn, fileTooBig, routeCleanup } from './core.js';
 import { Player, serverTTS, browserSpeak, pickFile, LipRenderer, AC } from './audio.js';
-import { myVoices, models, voicePicker, playerRow, exprControls, LANGS } from './views-a.js';
-import { respond } from './brain.js';
+import { myVoices, models, voicePicker, playerRow, exprControls, LANGS, langPicker } from './views-a.js';
 
 /* ================= DISCOVER ================= */
 const TRENDING = [
@@ -214,7 +213,7 @@ routes['/agents'] = {
           h('button', { class: 'iconbtn', html: icons.phone, 'aria-label': 'Call', onclick: () => navigate('/call/' + a.id) }),
           h('button', { class: 'iconbtn', html: icons.send, 'aria-label': 'Chat', onclick: () => navigate('/agent/' + a.id) }));
         const card = h('div', { class: 'card', style: { display: 'flex', gap: '13px', alignItems: 'center' } },
-          h('span', { class: 'avatar ' + (a.av || '') }, a.name[0]?.toUpperCase()),
+          h('span', { class: 'avatar ' + (a.av || '') }, a.emoji || a.name[0]?.toUpperCase()),
           h('div', { style: { flex: 1, minWidth: 0 } },
             h('b', {}, a.name, a.system ? h('span', { class: 'badge', style: { marginLeft: '8px', color: 'var(--lime)', borderColor: 'color-mix(in srgb, var(--lime) 40%, transparent)' } }, 'PLATFORM AI') : null),
             h('small', { class: 'muted', style: { display: 'block' } }, a.role),
@@ -236,16 +235,31 @@ routes['/agents'] = {
       const know = h('textarea', { class: 'ta', style: { minHeight: '80px' }, placeholder: 'Knowledge base, one fact per line:\nHours are 9am-6pm WAT\nPricing starts at $25/month\nWe support voice cloning and dubbing' });
       const greet = h('input', { class: 'input', placeholder: 'Greeting — e.g. Hi! Amara here, how can I help?' });
       const vSel = { id: state.defaultVoiceId };
+      const AVATARS = ['🎙️', '🦸', '🧑‍💼', '🎧', '🤖', '🌟', '🎬', '🗣️'];
+      const pick = { emoji: AVATARS[db.agents.length % AVATARS.length], traits: new Set() };
+      const avRow = h('div', { class: 'pills' });
+      const drawAv = () => avRow.replaceChildren(...AVATARS.map(e => h('button', { class: 'chip' + (pick.emoji === e ? ' on' : ''), style: { fontSize: '17px' }, onclick: () => { pick.emoji = e; drawAv(); } }, e)));
+      drawAv();
+      const TRAITS = [['warm', 'Warm'], ['playful', 'Playful'], ['concise', 'Concise'], ['formal', 'Formal'], ['witty', 'Witty'], ['calm', 'Calm'], ['hype', 'High-energy'], ['empathetic', 'Empathetic']];
+      const trRow = h('div', { class: 'pills' });
+      const drawTr = () => trRow.replaceChildren(...TRAITS.map(([t, l]) => h('button', { class: 'chip' + (pick.traits.has(t) ? ' on' : ''), onclick: () => { pick.traits.has(t) ? pick.traits.delete(t) : pick.traits.add(t); drawTr(); } }, l)));
+      drawTr();
+      const langSel = { lang: 'auto' };
       box.append(h('label', { class: 'fld' }, 'Name'), name,
+        h('label', { class: 'fld' }, 'Avatar'), avRow,
         h('label', { class: 'fld' }, 'Role'), role,
+        h('label', { class: 'fld' }, 'Personality traits'), trRow,
         h('label', { class: 'fld' }, 'Persona'), persona,
         h('label', { class: 'fld' }, 'Knowledge base'), know,
         h('label', { class: 'fld' }, 'Voice'), voicePicker(vSel),
+        h('label', { class: 'fld' }, 'Language'), langPicker(langSel),
         h('label', { class: 'fld' }, 'Greeting'), greet,
         h('button', { class: 'btn primary block', style: { marginTop: '18px' }, onclick: async () => {
           if (!name.value.trim()) return toast('Give the agent a name', 'edit');
           try {
-            const a = await addAgent({ name: name.value.trim(), role: role.value.trim() || 'Reachmark assistant', persona: persona.value, knowledge: know.value.split('\n').map(s => s.trim()).filter(Boolean), greeting: greet.value.trim() || ('Hi, ' + name.value.trim() + ' here! How can I help?'), voiceId: vSel.id?.startsWith('m:') ? null : vSel.id, model: vSel.id?.startsWith('m:') ? vSel.id.slice(2) : null, av: ['', 'warm', 'vio'][db.agents.length % 3] });
+            const traits = [...pick.traits];
+            const personaTxt = [persona.value.trim(), traits.length ? 'Traits: ' + traits.join(', ') + '.' : ''].filter(Boolean).join(' ');
+            const a = await addAgent({ name: name.value.trim(), role: role.value.trim() || 'Reachmark assistant', persona: personaTxt, traits, emoji: pick.emoji, language: langSel.lang, knowledge: know.value.split('\n').map(s => s.trim()).filter(Boolean), greeting: greet.value.trim() || ('Hi, ' + name.value.trim() + ' here! How can I help?'), voiceId: vSel.id?.startsWith('m:') ? null : vSel.id, model: vSel.id?.startsWith('m:') ? vSel.id.slice(2) : null, av: ['', 'warm', 'vio'][db.agents.length % 3] });
             render(); close();
             toast(a.name + ' is live', 'bot');
             navigate('/agent/' + a.id);
@@ -274,16 +288,21 @@ routes['/agent/:id'] = {
     const say = async (text) => {
       addBub('ag', text);
       if (!speakOn) return;
-      try { const { url } = await serverTTS({ text, voiceId: a.voiceId, model: a.model }); const au = new Audio(url); au.play(); }
+      try { const { url } = await serverTTS({ text, voiceId: a.voiceId, model: a.model, lang: a.language || state.lang }); const au = new Audio(url); au.play(); }
       catch { browserSpeak(text); }
     };
     const inp = h('input', { class: 'input', placeholder: 'Message ' + a.name + '…', style: { borderRadius: '999px' } });
+    let hist = [];
     const send = async () => {
       const t = inp.value.trim(); if (!t) return;
       inp.value = ''; addBub('me', t);
       const typing = h('div', { class: 'bub ag' }, h('span', { class: 'eq', style: { color: 'var(--lime)' } }, [0, 1, 2, 3, 4].map(() => h('i'))));
       log.append(typing); $('#view').scrollTop = 9e6;
-      setTimeout(async () => { typing.remove(); await say(respond(a, t)); }, 500 + Math.random() * 700);
+      try {
+        const r = await api('/api/agent/chat', { method: 'POST', body: { agentId: a.id, message: t, history: hist } });
+        hist = hist.concat([{ role: 'user', content: t }, { role: 'assistant', content: r.content }]).slice(-12);
+        typing.remove(); await say(r.content);
+      } catch (e) { typing.remove(); addBub('ag', 'Connection hiccup — ' + e.message); }
     };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
     setTimeout(() => say(a.greeting), 500);
@@ -309,7 +328,7 @@ routes['/call/:id'] = {
       log.append(h('div', { class: 'bub ag' }, h('small', {}, a.name), text));
       log.scrollTop = 9e6;
       if (!speaker) return;
-      try { const { url } = await serverTTS({ text, voiceId: a.voiceId, model: a.model }); const au = new Audio(url); au.play(); } catch { browserSpeak(text); }
+      try { const { url } = await serverTTS({ text, voiceId: a.voiceId, model: a.model, lang: a.language || state.lang }); const au = new Audio(url); au.play(); } catch { browserSpeak(text); }
     };
     const meSay = (text) => { log.append(h('div', { class: 'bub me' }, h('small', {}, 'You'), text)); log.scrollTop = 9e6; };
     const micBtn = h('button', { class: 'iconbtn on', html: icons.mic });
@@ -327,13 +346,20 @@ routes['/call/:id'] = {
       h('div', { style: { display: 'flex', justifyContent: 'space-between' } },
         h('button', { class: 'iconbtn', html: icons.close, onclick: () => navigate('/agents') }),
         h('span', { class: 'badge' }, 'REACHMARK CALL')),
-      h('div', { class: 'ringwrap' }, h('span', { class: 'halo' }), h('span', { class: 'halo' }), h('span', { class: 'avatar ' + (a.av || '') }, a.name[0])),
+      h('div', { class: 'ringwrap' }, h('span', { class: 'halo' }), h('span', { class: 'halo' }), h('span', { class: 'avatar ' + (a.av || ''), style: { fontSize: '34px' } }, a.emoji || a.name[0])),
       h('div', { class: 'callname' }, a.name), stat, log,
       h('div', { class: 'callbar' }, micBtn, endBtn, spkBtn));
     node.append(stage);
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let rec = null;
-    const agentTurn = (text) => { meSay(text); setTimeout(() => say(respond(a, text)), 400); };
+    let rec = null, callHist = [];
+    const agentTurn = async (text) => {
+      meSay(text);
+      try {
+        const r = await api('/api/agent/chat', { method: 'POST', body: { agentId: a.id, message: text, history: callHist } });
+        callHist = callHist.concat([{ role: 'user', content: text }, { role: 'assistant', content: r.content }]).slice(-12);
+        await say(r.content);
+      } catch (e) { await say('Sorry — the line crackled: ' + e.message); }
+    };
     if (SR) {
       rec = new SR(); rec.continuous = true; rec.interimResults = false; rec.lang = navigator.language;
       rec.onresult = e => { const t = e.results[e.results.length - 1][0].transcript; if (!muted && t.trim()) agentTurn(t.trim()); };
@@ -376,11 +402,114 @@ routes['/support'] = {
           h('span', { class: 'avatar', style: { background: 'var(--lime)', color: '#171a09' } }, icon('lifebuoy')),
           h('div', {}, h('b', { style: { fontSize: '17px' } }, 'We are here for you'), h('small', { class: 'muted' }, 'Average first response: instant with the Guide · under 24h by email')))),
       h('div', { class: 'sect' }, 'Talk to us'),
-      h('div', { class: 'row tap', onclick: () => navigate('/agent/guide') }, h('div', { class: 'r-ico' }, icon('send')), h('div', {}, h('b', {}, 'Live chat'), h('small', {}, 'Chat with Reachmark Guide — knows every studio')), h('div', { class: 'r-end' }, h('span', { class: 'dot on' }), icon('chevron'))),
+      h('div', { class: 'row tap', onclick: () => navigate('/support/chat') }, h('div', { class: 'r-ico' }, icon('send')), h('div', {}, h('b', {}, 'Live chat'), h('small', {}, 'Start with the Guide bot · escalate to a human anytime')), h('div', { class: 'r-end' }, h('span', { class: 'dot on' }), icon('chevron'))),
+      h('div', { class: 'row tap', onclick: () => navigate('/agent/guide') }, h('div', { class: 'r-ico' }, icon('bot')), h('div', {}, h('b', {}, 'Guide agent chat'), h('small', {}, 'Character chat with Reachmark Guide — knows every studio')), h('div', { class: 'r-end' }, icon('chevron'))),
       h('div', { class: 'row tap', onclick: () => navigate('/call/guide') }, h('div', { class: 'r-ico' }, icon('phone')), h('div', {}, h('b', {}, 'Support session'), h('small', {}, 'Voice call with the Guide agent')), h('div', { class: 'r-end' }, icon('chevron'))),
       h('div', { class: 'row tap', onclick: () => location.href = 'mailto:reachmarkofficial@gmail.com' }, h('div', { class: 'r-ico' }, icon('mail')), h('div', {}, h('b', {}, 'reachmarkofficial@gmail.com'), h('small', {}, 'General & account enquiries')), h('div', { class: 'r-end' }, icon('external'))),
       h('div', { class: 'row tap', onclick: () => location.href = 'mailto:support@reachmarkdigital.com' }, h('div', { class: 'r-ico' }, icon('mail')), h('div', {}, h('b', {}, 'support@reachmarkdigital.com'), h('small', {}, 'Technical support & billing')), h('div', { class: 'r-end' }, icon('external'))),
       h('div', { class: 'sect' }, 'Frequently asked'), faqBox));
+  },
+};
+
+/* ---------- live support chat: Guide bot → human handoff (SSE) ---------- */
+routes['/support/chat'] = {
+  title: 'Live support', tab: 'account',
+  top: () => ({ back: true, title: 'Live support', sub: 'Guide bot first · humans on call, worldwide' }),
+  view: async ({ node }) => {
+    const log = h('div', { class: 'stack', style: { paddingBottom: '8px' } });
+    const modeChip = h('span', { class: 'badge' }, 'GUIDE BOT');
+    const typingLine = h('small', { class: 'muted', style: { minHeight: '16px', display: 'block', padding: '0 4px' } }, '');
+    let thread = null, human = false, guideHist = [], missCount = 0, poll = null, es = null, lastTypingSent = 0;
+    const scroll = () => { $('#view').scrollTop = 9e6; };
+    const bub = (who, text, meta) => {
+      const b = h('div', { class: 'bub ' + who }, who === 'sys' ? null : h('small', {}, who === 'me' ? 'You' : (human ? 'Support team' : 'Reachmark Guide')), h('span', {}, text), meta ? h('small', { class: 'muted', style: { display: 'block', textAlign: 'right', fontSize: '10px' } }, meta) : null);
+      log.append(b); scroll(); return b;
+    };
+    const setMode = () => {
+      modeChip.textContent = !thread ? 'GUIDE BOT' : ('HUMAN · ' + thread.status.toUpperCase());
+      modeChip.style.color = thread ? 'var(--lime)' : '';
+      modeChip.style.borderColor = thread ? 'color-mix(in srgb, var(--lime) 40%, transparent)' : '';
+    };
+    const markMine = (m) => bub('me', m.text, m.readAt ? '✓✓ read' : '✓ sent');
+    const clock = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const renderAdmin = (m) => bub('ag', m.text, clock(m.createdAt) + (m.sender === 'bot' ? ' · bot' : ''));
+
+    const loadState = async () => {
+      try {
+        const j = await api('/api/support/state');
+        thread = j.thread; human = !!thread; setMode();
+        log.replaceChildren();
+        if (!thread) {
+          bub('ag', 'Hi! I am the Reachmark Guide — ask me anything about the studios, credits or your account. Prefer a person? Tap “Talk to a human” below.');
+        } else {
+          j.messages.forEach(m => m.sender === 'user' ? markMine(m) : renderAdmin(m));
+          if (thread.status === 'closed') bub('sys', 'This conversation was closed. Tap “Talk to a human” to reopen it.');
+          api('/api/support/read', { method: 'POST', body: {} }).catch(() => {});
+        }
+      } catch {}
+    };
+    const escalate = async (subject) => {
+      try {
+        const j = await api('/api/support/escalate', { method: 'POST', body: { subject: subject || 'Support request' } });
+        thread = j.thread; human = true; setMode();
+        renderAdmin(j.message);
+        toast('Connected to the support team', 'lifebuoy');
+      } catch (e) { toast(e.message, 'close'); }
+    };
+    const sendHuman = async (t) => {
+      try {
+        const j = await api('/api/support/message', { method: 'POST', body: { text: t } });
+        thread = j.thread; setMode();
+      } catch (e) { bub('sys', e.message); }
+    };
+    const sendGuide = async (t) => {
+      const typing = h('div', { class: 'bub ag' }, h('span', { class: 'eq', style: { color: 'var(--lime)' } }, [0, 1, 2, 3, 4].map(() => h('i'))));
+      log.append(typing); scroll();
+      try {
+        const r = await api('/api/agent/chat', { method: 'POST', body: { agentId: 'guide', message: t, history: guideHist } });
+        guideHist = guideHist.concat([{ role: 'user', content: t }, { role: 'assistant', content: r.content }]).slice(-12);
+        typing.remove();
+        bub('ag', r.content);
+        try { const { url } = await serverTTS({ text: r.content.slice(0, 300), voiceId: null, model: null }); const au = new Audio(url); au.volume = 0.9; au.play().catch(() => {}); } catch {}
+        if (r.source === 'local' && /not in my brief|do not have|beyond my notes/i.test(r.content)) {
+          missCount++;
+          if (missCount >= 2) { missCount = 0; bub('sys', 'The Guide could not answer that — handing you to a human.'); await escalate(t.slice(0, 60)); }
+        } else missCount = 0;
+      } catch (e) { typing.remove(); bub('sys', e.message); }
+    };
+    const inp = h('input', { class: 'input', placeholder: 'Write a message…', style: { borderRadius: '999px' } });
+    const send = async () => { const t = inp.value.trim(); if (!t) return; inp.value = ''; bub('me', t); human ? sendHuman(t) : sendGuide(t); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+    inp.addEventListener('input', () => { if (human && thread && Date.now() - lastTypingSent > 2500) { lastTypingSent = Date.now(); api('/api/support/typing', { method: 'POST', body: {} }).catch(() => {}); } });
+    const humanBtn = h('button', { class: 'btn sm', onclick: () => escalate(inp.value.trim().slice(0, 60) || 'Support request') }, icon('lifebuoy'), 'Talk to a human');
+
+    /* realtime: SSE with auto-reconnect, polling fallback on repeated errors */
+    const startStream = () => {
+      try {
+        es = new EventSource('/api/support/stream');
+        let errs = 0;
+        es.onerror = () => { errs++; if (errs >= 3 && es) { es.close(); es = null; startPoll(); } };
+        es.onopen = () => { errs = 0; if (poll) { clearInterval(poll); poll = null; } };
+        es.addEventListener('message', ev => {
+          const m = JSON.parse(ev.data);
+          if (!thread || m.threadId !== thread.id) return;
+          renderAdmin(m);
+          api('/api/support/read', { method: 'POST', body: {} }).catch(() => {});
+        });
+        es.addEventListener('typing', () => { typingLine.textContent = 'Support is typing…'; clearTimeout(window._stt); window._stt = setTimeout(() => typingLine.textContent = '', 4000); });
+        es.addEventListener('state', ev => { const s = JSON.parse(ev.data); if (thread) { thread.status = s.status; setMode(); } });
+      } catch { startPoll(); }
+    };
+    const startPoll = () => { if (!poll) poll = setInterval(loadState, 5000); };
+    startStream();
+    routeCleanup.push(() => { if (es) es.close(); es = null; if (poll) clearInterval(poll); poll = null; clearTimeout(window._stt); });
+
+    await loadState();
+    node.append(h('div', {},
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 2px 10px' } }, modeChip, h('div', { style: { flex: 1 } }), humanBtn),
+      log, typingLine,
+      h('div', { style: { position: 'sticky', bottom: '0', display: 'flex', gap: '8px', padding: '12px 0', background: 'color-mix(in srgb, var(--canvas) 88%, transparent)', backdropFilter: 'blur(10px)' } },
+        inp, h('button', { class: 'iconbtn solid', html: icons.send, onclick: send }))));
   },
 };
 

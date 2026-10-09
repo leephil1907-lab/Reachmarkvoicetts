@@ -1,5 +1,5 @@
 // Reachmark Audio — boot: session, chrome (sidebar/tabbar), splash, create sheet, support FAB, command palette.
-import { h, icon, icons, state, save, navigate, routes, renderRoute, sheet, toast, applyTheme, bootAuth, db, modal, logout } from './core.js';
+import { h, icon, icons, state, save, navigate, routes, renderRoute, sheet, toast, applyTheme, bootAuth, db, modal, logout, api } from './core.js';
 import './views-a.js';
 import './views-b.js';
 import { welcomeSheet } from './auth.js';
@@ -113,6 +113,15 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   addEventListener('hashchange', renderRoute);
   if (!user && !location.hash) location.hash = '/auth';
   renderRoute();
+  try {
+    const cfg = await api('/api/config');
+    if (cfg.maintenance) toast('Under maintenance — studios are briefly paused', 'cpu');
+    if (cfg.announcement) {
+      const bar = h('button', { class: 'announce', 'aria-label': 'Dismiss announcement', onclick: e => e.currentTarget.remove() },
+        h('span', {}, '📣 ' + cfg.announcement), h('small', {}, 'tap to dismiss'));
+      document.body.prepend(bar);
+    }
+  } catch {}
   if (user) {
     fabSupport.style.display = 'grid';
     if (!state.onboarded) { state.onboarded = true; save(); setTimeout(welcomeSheet, 1200); }

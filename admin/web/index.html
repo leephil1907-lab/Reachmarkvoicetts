@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Reachmark Admin — Control Room</title>
+<link rel="stylesheet" href="/admin.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0e14'/%3E%3Cpath d='M16 6v13M11 10v6M21 10v6M7 13v1M25 13v1' stroke='%2357c7ff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="gate" class="gate hidden">
+  <div class="gate-card">
+    <div class="gate-logo">🎙️ REACHMARK <b>ADMIN</b></div>
+    <div id="gate-step-login">
+      <h1>Control room access</h1>
+      <p class="dim">Admin &amp; support staff only. Every action is audit-logged.</p>
+      <label>Email<input id="g-email" type="email" autocomplete="username" spellcheck="false"></label>
+      <label>Password<input id="g-pass" type="password" autocomplete="current-password"></label>
+      <button id="g-login" class="btn primary block">Continue →</button>
+    </div>
+    <div id="gate-step-2fa" class="hidden">
+      <h1>Two-factor required</h1>
+      <p class="dim" id="g-2fa-help">Enter the 6-digit code from your authenticator app.</p>
+      <div id="g-enroll" class="hidden">
+        <p class="dim">First login — enroll this account. Add the key to your authenticator (Authy, 1Password, Google Authenticator…):</p>
+        <code id="g-secret" class="secret"></code>
+        <p class="dim tiny" id="g-otpauth"></p>
+      </div>
+      <label>Code<input id="g-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"></label>
+      <button id="g-verify" class="btn primary block">Verify &amp; enter →</button>
+      <button id="g-back" class="btn ghost block">← Back</button>
+    </div>
+    <div id="gate-err" class="gate-err hidden"></div>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <aside class="side">
+    <div class="brand">🎙️ <span>REACHMARK<b>ADMIN</b></span></div>
+    <nav id="nav">
+      <a href="#/dashboard" data-p="dashboard"><i>◧</i> Dashboard</a>
+      <a href="#/users" data-p="users"><i>👤</i> Users</a>
+      <a href="#/inbox" data-p="inbox"><i>✉</i> Support inbox <b id="nav-unread" class="badge hidden">0</b></a>
+      <a href="#/studio" data-p="studio"><i>🎛</i> Studio</a>
+      <a href="#/site" data-p="site"><i>⚙</i> Site control</a>
+      <a href="#/docs" data-p="docs"><i>🧬</i> Agents &amp; voices</a>
+      <a href="#/audit" data-p="audit"><i>📜</i> Audit log</a>
+      <a href="#/admins" data-p="admins"><i>🛡</i> Admins</a>
+    </nav>
+    <div class="side-foot">
+      <div id="who" class="who"></div>
+      <button id="logout" class="btn ghost sm">Sign out</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div id="crumb" class="crumb">Dashboard</div>
+      <div class="top-right">
+        <span id="live-dot" class="led" title="Live connection"></span>
+        <span id="clock" class="clock"></span>
+      </div>
+    </header>
+    <div id="view" class="view"></div>
+  </main>
+</div>
+<div id="toasts" class="toasts"></div>
+<script src="/admin.js"></script>
+</body>
+</html>

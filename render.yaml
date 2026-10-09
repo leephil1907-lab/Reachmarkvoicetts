@@ -1,3 +1,21 @@
+# Reachmark Audio v1.3 — public PWA + admin control room.
+#
+# THE DATABASE REALITY (read this before splitting services):
+# Both apps share ONE SQLite file on ONE persistent disk (WAL mode makes
+# multi-process access safe). Render attaches a disk to exactly ONE service,
+# and two services CANNOT share a local disk. So the supported layouts are:
+#
+#   1) ONE container, TWO ports (what this file deploys): scripts/run-all.sh
+#      runs the public app on $PORT and the admin app on $ADMIN_PORT (8001).
+#      Render routes only $PORT to your public subdomain; put your own reverse
+#      proxy or tunnel in front to expose :8001 as admin.yourdomain.com, or
+#      access it via Render's shell/port-forwarding for ops work.
+#
+#   2) TWO services, each with its own subdomain (true separation): only after
+#      migrating storage from SQLite to a shared Postgres (Render Blueprint
+#      below has the commented-out skeleton). Until then, do NOT deploy the
+#      admin service with its own disk — it would silently use a DIFFERENT
+#      database than the public app.
 services:
   - type: web
     name: reachmark-audio
@@ -5,10 +23,59 @@ services:
     plan: starter
     region: frankfurt
     healthCheckPath: /api/health
+    dockerCommand: ./docker-entrypoint.sh
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 8000
+      - key: ADMIN_PORT
+        value: 8001
+      # ---- admin app: first admin comes ONLY from these env vars ----
+      - key: ADMIN_EMAIL
+        sync: false            # e.g. you@reachmarkdigital.com — never public signup
+      - key: ADMIN_PASSWORD
+        sync: false            # strong temp password; 2FA (TOTP) is enrolled at first login
+      - key: ADMIN_IP_ALLOWLIST
+        sync: false            # optional: comma-separated IPs/CIDR-ish list allowed to reach the admin app
+      - key: SUPPORT_EMAIL
+        value: support@reachmarkdigital.com
+      # ---- character agents: any OpenAI-compatible provider ----
+      - key: LLM_API_KEY
+        sync: false            # without it, agents fall back to the local persona brain
+      - key: LLM_BASE_URL
+        sync: false            # default https://api.openai.com/v1
+      - key: LLM_MODEL
+        sync: false            # default gpt-4o-mini
     disk:
       name: reachmark-data
       mountPath: /data
       sizeGB: 2
+
+# ---- layout 2 skeleton (activate ONLY after a Postgres migration) ----
+#  - type: web
+#    name: reachmark-admin
+#    runtime: docker
+#    plan: starter
+#    region: frankfurt
+#    healthCheckPath: /health
+#    dockerCommand: node admin/server.js
+#    envVars:
+#      - key: DATABASE_URL
+#        fromDatabase:
+#          name: reachmark-db
+#          property: connectionString
+#      - key: ADMIN_EMAIL
+#        sync: false
+#      - key: ADMIN_PASSWORD
+#        sync: false
+#      - key: ADMIN_IP_ALLOWLIST
+#        sync: false
+#  - type: web            # public app, same DATABASE_URL, no disk needed
+#    name: reachmark-audio
+#    ...
+# databases:
+#   - name: reachmark-db
+#     plan: starter
+#     databaseName: reachmark
+#     user: reachmark

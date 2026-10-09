@@ -12,6 +12,10 @@ const dsp = require('./dsp');
 const tts = require('./tts');
 const engines = require('./engines');
 const store = require('./db');
+const llm = require('./llm');
+const brainS = require('./brain');
+const mail = require('./mail');
+store.db.exec('CREATE TABLE IF NOT EXISTS typing (threadId TEXT PRIMARY KEY, side TEXT, at INTEGER)');
 
 const WEB = path.join(__dirname, '..', 'web');
 const RENDER = tts.RENDER_DIR;
@@ -51,6 +55,8 @@ function agentDoc(b) {
     greeting: str(b.greeting, 300) || 'Hi! How can I help?',
     voiceId: str(b.voiceId, 40) || null, model: str(b.model, 64) || null,
     av: oneOf(str(b.av, 8), ['', 'warm', 'vio'], ''),
+    emoji: str(b.emoji, 8) || '', traits: arrStr(b.traits, 8, 24),
+    language: oneOf(str(b.language, 8), ['auto', 'en', 'fr', 'es', 'de'], 'auto'),
   };
 }
 function historyDoc(b) {
@@ -183,20 +189,29 @@ const server = http.createServer(async (req, res) => {
 
   try {
     /* ---- public ---- */
-    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.2.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, time: Date.now() });
+    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), time: Date.now() });
+    if (p === '/api/config') return json(res, 200, {
+      announcement: store.config.get('announcement'),
+      maintenance: store.config.get('maintenance') === '1',
+      signup_on: store.config.get('signup_on') === '1',
+      flags: store.config.flags(), costs: store.config.costs(),
+      default_voice: store.config.get('default_voice'),
+    });
 
     if (p === '/api/auth/signup' && req.method === 'POST') {
       const b = JSON.parse(await readBody(req, 1e6));
       const name = str(b.name, 80)?.trim(), email = str(b.email, 200)?.trim().toLowerCase(), pass = String(b.password || '');
       const ip = clientIp(req);
       if (!store.rateLimit('signup:' + ip + ':' + email, 5, 15 * 60 * 1000)) return json(res, 429, { error: 'Too many attempts. Please try again in 15 minutes.' });
+      if (store.config.get('signup_on') !== '1') return json(res, 403, { error: 'Signups are currently closed.' });
       if (!name || name.length < 2) return json(res, 422, { error: 'Please enter your name.' });
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(res, 422, { error: 'That email address does not look valid.' });
       if (pass.length < 8) return json(res, 422, { error: 'Password must be at least 8 characters.' });
       if (store.users.byEmail(email)) return json(res, 409, { error: 'An account with this email already exists. Log in instead.' });
       const salt = crypto.randomBytes(8).toString('hex');
       const uid = 'u_' + crypto.randomBytes(6).toString('hex');
-      const user = store.users.create({ id: uid, name, email, salt, pass: await hashPass(pass, salt), credits: SIGNUP_CREDITS, plan: 'free', minutes: 0, trial_used: 0, trial_ends: null, created: Date.now() });
+      const user = store.users.create({ id: uid, name, email, salt, pass: await hashPass(pass, salt), credits: Number(store.config.get('signup_credits')) || 10000, plan: 'free', minutes: 0, trial_used: 0, trial_ends: null, created: Date.now() });
+      try { store.db.prepare('INSERT INTO ledger (uid,at,delta,kind) VALUES (?,?,?,?)').run(user.id, Date.now(), user.credits, 'signup'); } catch {}
       userSamplesDir(uid);
       store.agents.add(uid, guideAgent());
       return json(res, 200, { user: pubUser(user), fresh: true }, { 'Set-Cookie': startSession(res, uid, secure) });
@@ -239,7 +254,14 @@ const server = http.createServer(async (req, res) => {
     const cu = cookieUser(req);
     if (!cu) return json(res, 401, { error: 'not signed in' });
     const user = cu.user, uid = user.id;
+    if (user.suspended) return json(res, 403, { error: 'This account is suspended. Contact support@reachmarkdigital.com.' });
+    if (!user.last_seen || Date.now() - user.last_seen > 60000) { user.last_seen = Date.now(); store.users.save(user); }
     const slots = user.plan === 'plus' ? 10 : 3;
+    const costs = store.config.costs();
+    const flags = store.config.flags();
+    const needFlag = key => { if (!flags[key]) { json(res, 403, { error: 'This studio is temporarily disabled by the operator.' }); return false; } return true; };
+    if (store.config.get('maintenance') === '1' && !p.startsWith('/api/support') && p !== '/api/me' && p !== '/api/agent/chat')
+      return json(res, 503, { error: 'Reachmark Audio is under maintenance — please try again shortly.' });
 
     if (p === '/api/me') return json(res, 200, { user: pubUser(user) });
     if (p === '/api/plan/trial' && req.method === 'POST') {
@@ -313,8 +335,9 @@ const server = http.createServer(async (req, res) => {
 
     /* ---- paid engine routes ---- */
     if (p === '/api/tts' && req.method === 'POST') {
+      if (!needFlag('tts')) return;
       const b = JSON.parse(await readBody(req, 2e6));
-      const cost = Math.max(5, Math.ceil(String(b.text || '').length / 40));
+      const cost = Math.max(costs.ttsMin || 5, Math.ceil(String(b.text || '').length / 40) * (costs.ttsPer40 || 1));
       return paid(res, user, cost,
         () => {
           const text = str(b.text, 4000)?.trim();
@@ -323,6 +346,7 @@ const server = http.createServer(async (req, res) => {
           let opts = { text, model: str(b.model, 64), lang: str(b.lang, 8), semitones: num(b.semitones, -12, 12, 0), rate: num(b.rate, 0.5, 2, 1), fx: oneOf(str(b.fx, 10), FX, 'none') };
           if (b.voiceId) {
             const v = store.voices.get(uid, str(b.voiceId, 40));
+            if (v && v.disabled) throw Object.assign(new Error('This voice has been disabled by support.'), { status: 403 });
             if (v) opts = { ...opts, model: v.model ?? opts.model, semitones: opts.semitones || v.semitones, rate: b.rate ? opts.rate : (v.rate || 1), fx: opts.fx === 'none' ? v.fx : opts.fx };
           }
           return opts;
@@ -334,8 +358,9 @@ const server = http.createServer(async (req, res) => {
         });
     }
     if (p === '/api/voice-change' && req.method === 'POST') {
+      if (!needFlag('changer')) return;
       const b = JSON.parse(await readBody(req));
-      return paid(res, user, 20,
+      return paid(res, user, costs.vc || 20,
         () => {
           const raw = b64ToBuf(b.audio);
           if (raw.length > MAX_UPLOAD) throw Object.assign(new Error('Upload too large — 20 MB max.'), { status: 413 });
@@ -353,8 +378,9 @@ const server = http.createServer(async (req, res) => {
         });
     }
     if (p === '/api/separate' && req.method === 'POST') {
+      if (!needFlag('sep')) return;
       const b = JSON.parse(await readBody(req));
-      return paid(res, user, 30,
+      return paid(res, user, costs.separate || 30,
         () => {
           const raw = b64ToBuf(b.audio);
           if (raw.length > MAX_UPLOAD) throw Object.assign(new Error('Upload too large — 20 MB max.'), { status: 413 });
@@ -369,8 +395,9 @@ const server = http.createServer(async (req, res) => {
         });
     }
     if (p === '/api/clone' && req.method === 'POST') {
+      if (!needFlag('match')) return;
       const b = JSON.parse(await readBody(req));
-      return paid(res, user, 150,
+      return paid(res, user, costs.match || 150,
         () => {
           if (store.voices.list(uid).length >= slots) throw Object.assign(new Error('Voice slot limit reached on Free (3). Start the Plus trial from Account → Upgrade.'), { status: 402 });
           const raw = b64ToBuf(b.sample);
@@ -391,6 +418,92 @@ const server = http.createServer(async (req, res) => {
       const fp = path.join(RENDER, file);
       if (fs.existsSync(fp)) return wav(res, fs.readFileSync(fp), { 'Cache-Control': 'private, max-age=86400' });
       return json(res, 404, { error: 'not found' });
+    }
+
+    /* ---- character agent chat (LLM with on-device fallback) ---- */
+    if (p === '/api/agent/chat' && req.method === 'POST') {
+      if (!needFlag('agents')) return;
+      const b = JSON.parse(await readBody(req, 1e6));
+      const message = str(b.message, 2000)?.trim();
+      if (!message) return json(res, 400, { error: 'Message is required.' });
+      if (!store.rateLimit('chat:' + uid, 30, 60000)) return json(res, 429, { error: 'Slow down — message limit reached.' });
+      const agent = store.agents.get(uid, str(b.agentId, 40));
+      if (!agent) return json(res, 404, { error: 'Agent not found.' });
+      if (agent.disabled) return json(res, 403, { error: 'This agent has been disabled by support.' });
+      const history = Array.isArray(b.history)
+        ? b.history.slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: str(m.content, 1500) })).filter(m => m.content)
+        : [];
+      const run = async () => {
+        let out = null;
+        try { out = await llm.chat({ agent, history, message }); } catch {}
+        if (!out) out = { content: brainS.respond(agent, message), source: 'local' };
+        return out;
+      };
+      if (agent.system) { const out = await run(); return json(res, 200, out); } // platform Guide is free
+      const cost = costs.chat || 2;
+      return paid(res, user, cost, () => ({}), async () => {
+        const out = await run();
+        return { seconds: 0, respond: () => json(res, 200, { ...out, ...creditHeader(user) }) };
+      });
+    }
+
+    /* ---- live support (threads + SSE) ---- */
+    if (p.startsWith('/api/support')) {
+      if (!needFlag('support')) return;
+      if (p === '/api/support/state' && req.method === 'GET') {
+        const t = store.support.threadForUser(uid);
+        return json(res, 200, { thread: t || null, messages: t ? store.support.messages(t.id).filter(m => m.sender !== 'note') : [] });
+      }
+      if (p === '/api/support/escalate' && req.method === 'POST') {
+        const b = JSON.parse(await readBody(req, 1e5));
+        let t = store.support.threadForUser(uid);
+        if (!t) t = store.support.createThread(uid, str(b.subject, 60) || 'Support request');
+        if (t.status !== 'open') store.support.updateThread(t.id, { status: 'open' });
+        const m = store.support.addMessage(t.id, 'bot', 'You are now connected to the Reachmark support team. They can see your plan and recent activity to help you faster.');
+        store.support.updateThread(t.id, { lastMessageAt: m.createdAt, unreadByAdmin: (t.unreadByAdmin || 0) + 1 });
+        return json(res, 200, { thread: store.support.thread(t.id), message: m });
+      }
+      if (p === '/api/support/message' && req.method === 'POST') {
+        if (!store.rateLimit('sup:' + uid, 10, 60000)) return json(res, 429, { error: 'Too many messages — slow down a little.' });
+        const b = JSON.parse(await readBody(req, 1e5));
+        const text = str(b.text, 2000)?.trim();
+        if (!text) return json(res, 400, { error: 'Message is required.' });
+        let t = store.support.threadForUser(uid);
+        if (!t) t = store.support.createThread(uid, text.slice(0, 60));
+        const m = store.support.addMessage(t.id, 'user', text);
+        store.support.updateThread(t.id, { lastMessageAt: m.createdAt, unreadByAdmin: (t.unreadByAdmin || 0) + 1, status: t.status === 'pending' ? 'open' : t.status });
+        return json(res, 200, { thread: store.support.thread(t.id), message: m });
+      }
+      if (p === '/api/support/read' && req.method === 'POST') {
+        const t = store.support.threadForUser(uid);
+        if (t) store.support.markRead(t.id, 'user');
+        return json(res, 200, { ok: true });
+      }
+      if (p === '/api/support/typing' && req.method === 'POST') {
+        const t = store.support.threadForUser(uid);
+        if (t) store.db.prepare('INSERT OR REPLACE INTO typing (threadId,side,at) VALUES (?,?,?)').run(t.id, 'user', Date.now());
+        return json(res, 200, { ok: true });
+      }
+      if (p === '/api/support/stream' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+        res.write('retry: 3000\n\n');
+        let last = Date.now() - 1000;
+        const iv = setInterval(() => {
+          const t = store.support.threadForUser(uid);
+          if (t) {
+            const msgs = store.support.messages(t.id).filter(m => m.createdAt > last && m.sender !== 'note');
+            for (const m of msgs) res.write('event: message\ndata: ' + JSON.stringify(m) + '\n\n');
+            if (msgs.length) last = msgs[msgs.length - 1].createdAt;
+            const typ = store.db.prepare('SELECT at FROM typing WHERE threadId=? AND side=?').get(t.id, 'admin');
+            if (typ && Date.now() - typ.at < 4000) res.write('event: typing\ndata: {"side":"admin"}\n\n');
+            const th = store.support.thread(t.id);
+            res.write('event: state\ndata: ' + JSON.stringify({ status: th.status, unreadByUser: th.unreadByUser }) + '\n\n');
+          }
+          res.write(': ping\n\n');
+        }, 1200);
+        req.on('close', () => clearInterval(iv));
+        return;
+      }
     }
     return json(res, 404, { error: 'not found' });
   } catch (e) {

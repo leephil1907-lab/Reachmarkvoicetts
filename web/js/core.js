@@ -235,6 +235,7 @@ document.addEventListener('pointerdown', e => {
 /* ---------------- router & chrome ---------------- */
 export const routes = {};
 export let currentView = null;
+export const routeCleanup = []; // views push teardown fns (SSE, timers); flushed on every navigation
 let navigating = false;
 
 export function navigate(path, replace = false) {
@@ -255,6 +256,7 @@ export async function renderRoute() {
   const old = wrap.firstElementChild;
   if (navigating) return;
   navigating = true;
+  while (routeCleanup.length) { try { routeCleanup.pop()(); } catch {} }
   const node = h('div', { class: 'view' });
   const ctx = { params, node };
   try { await route.view(ctx); } catch (e) { node.append(h('div', { class: 'empty' }, h('b', {}, 'View error: ' + e.message))); console.error(e); }

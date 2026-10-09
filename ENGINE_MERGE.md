@@ -67,3 +67,38 @@ RTVC/MockingBird/ChatterBox adapters with the same request contracts — no UI c
 - Deploy: Dockerfile (python3 + piper-tts), docker-entrypoint (voice download to persistent disk), render.yaml with 2 GB disk, root package.json, `/api/health` reports piper/db/dataDir.
 - Honest labels: **Voice Match** and **Quick Vocal Remove** across UI, manifest, Guide knowledge and README; GPU engine slots (XTTS/OpenVoice/Demucs) documented as plug-in replacements on the same endpoints.
 - PWA: padded maskable icons (80% safe zone), pinch-zoom enabled, flag emoji repaired.
+
+## v1.3 — character agents, admin control room, live support
+
+- **server/llm.js** (new): OpenAI-compatible chat adapter (`LLM_API_KEY` / `LLM_BASE_URL` /
+  `LLM_MODEL`) building system prompts from each agent's persona/role/knowledge (agent-builder
+  UX pattern from MockingBird/ChatterBox briefs). No key or any provider error → `null`, and the
+  caller falls back to **server/brain.js** (new): the client persona brain ported server-side so
+  replies are always available and always charged/refunded consistently.
+- **server/totp.js** (new): RFC-6238 TOTP (base32 secrets, ±1 window) for mandatory admin 2FA —
+  pure Node, no dependency (same zero-dep philosophy as the merged DSP layer).
+- **server/db.js**: roles + suspension + `last_seen` + TOTP columns (with ALTER migrations from
+  v1.2 databases), `admin_sessions` (own table, CSRF per session), `audit`, `support_threads` /
+  `support_messages`, `site_config` (defaults in code), and a credit `ledger` so the admin
+  dashboard can report issued/spent exactly.
+- **server/server.js**: `POST /api/agent/chat` (rate limit 30/min, history cap 12, credits
+  charged server-side with the existing atomic-refund `paid()` wrapper, Guide free), support
+  thread routes + SSE stream, public `/api/config` (announcement/maintenance/signup/flags),
+  maintenance gate (503 except health/auth/support), per-studio feature-flag gates, costs &
+  signup credits now read from site config, suspended users blocked, disabled voices/agents
+  rejected, `last_seen` throttled updates.
+- **admin/** (new app): `admin/server.js` on `ADMIN_PORT` + `admin/web/` control-room UI.
+  VoiceStudio's studio-layout patterns reused for the admin Studio workspace (same
+  `server/tts.js` + `server/dsp.js` engines, admin uid, zero charges). Shares the one SQLite
+  file with the public server — WAL multi-process, per Render's single-disk reality
+  (`scripts/run-all.sh` runs both in one container).
+- **web/js**: chat & call views now use `/api/agent/chat` (spoken with the agent's language);
+  new `#/support/chat` live-support view (Guide bot → human handoff, SSE + polling fallback,
+  typing indicators, read ticks); agent builder gains avatar / traits / language; boot fetches
+  `/api/config` for the announcement banner + maintenance toast. `brain.js` stays in the shell
+  for offline use only.
+- **tools/tests.js** (new): boots BOTH servers on test ports with a throwaway `DATA_DIR` and
+  asserts the v1.3 guarantees — non-admin → 401/403 on admin APIs, 2FA required, lockout after
+  5 failures, credit adjustments audit-logged with reason, user→admin→user support roundtrip
+  < 2 s (measured 2–4 ms over the shared DB; SSE delivery 0.8–1.2 s), CSRF, gates, moderation,
+  suspension, deletion. 77/77 passing.

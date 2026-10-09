@@ -7,4 +7,4 @@ if [ ! -d "$PIPER_VOICES_DIR" ] || [ -z "$(ls -A "$PIPER_VOICES_DIR" 2>/dev/null
 else
   echo "[entrypoint] Piper voices present in $PIPER_VOICES_DIR"
 fi
-exec node server/server.js
+exec ./scripts/run-all.sh
