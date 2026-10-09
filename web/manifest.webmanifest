@@ -1,0 +1,30 @@
+{
+  "name": "Reachmark Audio",
+  "short_name": "Reachmark",
+  "id": "/",
+  "scope": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "lang": "en",
+  "dir": "ltr",
+  "description": "Clone, design, dub, lip-sync and call with AI voices in any language. One merged engine hub: neural TTS, voice conversion, character agents.",
+  "categories": ["productivity", "music", "utilities", "business"],
+  "background_color": "#151310",
+  "theme_color": "#151310",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/assets/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Text to Speech", "short_name": "TTS", "description": "Generate speech in any voice and language", "url": "/#/studio/tts", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] },
+    { "name": "Instant Voice Clone", "short_name": "Clone", "description": "Clone a voice from 10 seconds of audio", "url": "/#/studio/clone", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] },
+    { "name": "Support Center", "short_name": "Support", "description": "Live chat and support sessions", "url": "/#/support", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

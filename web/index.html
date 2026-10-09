@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#151310">
+<meta name="description" content="Reachmark Audio — clone, design, dub, lip-sync and call with AI voices. One merged engine hub: neural TTS, voice conversion, character agents.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reachmark">
+<title>Reachmark Audio</title>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div id="bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="grain"></i></div>
+<div id="app">
+  <aside id="sidebar" aria-label="Primary"></aside>
+  <div id="main">
+    <header id="topbar"></header>
+    <div id="viewwrap"><main id="view" aria-live="polite"></main></div>
+  </div>
+</div>
+<nav id="tabbar" aria-label="Tabs"></nav>
+<div id="sheet-root"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

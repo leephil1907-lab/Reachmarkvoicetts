@@ -1,1 +1,0 @@
-import {cn} from "@/lib/utils";export function MessageBubble({role,text}:{role:string;text:string}){return <div className={cn("max-w-[85%] rounded-2xl px-4 py-3 text-sm",role==="user"?"ml-auto bg-accent text-white":"bg-elevated text-foreground")}><div className="mb-1 text-[10px] uppercase tracking-wider opacity-60">{role}</div>{text}</div>}
