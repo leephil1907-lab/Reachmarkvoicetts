@@ -125,6 +125,31 @@ function adminThreadNotice({ adminEmail, threadId, userEmail, preview, url }) {
   return { subject, html, text };
 }
 
+function verifyEmail({ name, email, url, token, code }) {
+  const link = url + '/#/verify/' + token;
+  const subject = 'Verify your email — Reachmark Audio';
+  const html = wrap(subject,
+    h1('One tap to verify, ' + name + ' ✉️') +
+    p(`Confirm that <b>${email}</b> is really you. Either open the link below, or type the 6-digit code into the box in the app — whichever is easier:`) +
+    `<div style="text-align:center;margin:0 0 18px"><span style="display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:34px;font-weight:800;letter-spacing:.28em;color:#151310;background:#f4f8e8;border:1px dashed #b9d67e;border-radius:12px;padding:12px 20px">${code}</span></div>` +
+    p(btn(link, 'Verify my email')) +
+    p('<span style="color:#77796f;font-size:12.5px">Link and code expire in 24 hours. Not working? Support → Live chat, or resend from Account. If you did not create this account, ignore this email.</span>'),
+    'Your verification code: ' + code);
+  const text = `Hi ${name},\n\nVerify ${email} for Reachmark Audio.\nCode: ${code}\nOr open: ${link}\n\nExpires in 24 hours.\n\n${COMPANY} · ${SUPPORT}`;
+  return { subject, html, text };
+}
+
+function verifiedNotice({ name }) {
+  const subject = 'Email verified — welcome to the full studio';
+  const html = wrap(subject,
+    h1('You are verified ✅') +
+    p(`Hi ${name} — your email address is confirmed. Your account is in good standing and every studio is unlocked.`) +
+    p('<span style="color:#77796f;font-size:12.5px">Keep this email for your records. Reachmark Audio is a product of ' + COMPANY + '.</span>'),
+    'Verification complete.');
+  const text = `Hi ${name}, your Reachmark Audio email is verified. All studios unlocked.\n\n${COMPANY} · ${SUPPORT}`;
+  return { subject, html, text };
+}
+
 function adminOfflineReply({ adminEmail, threadId, userEmail, replyText }) {
   const subject = '[Reachmark support] offline reply delivered to ' + userEmail;
   const html = wrap(subject,
@@ -136,4 +161,4 @@ function adminOfflineReply({ adminEmail, threadId, userEmail, replyText }) {
   return { subject, html, text };
 }
 
-module.exports = { COMPANY, CONTACT, SUPPORT, welcome, passwordReset, passwordChanged, supportReply, suspended, reinstated, adminThreadNotice, adminOfflineReply };
+module.exports = { COMPANY, CONTACT, SUPPORT, welcome, passwordReset, passwordChanged, supportReply, suspended, reinstated, adminThreadNotice, adminOfflineReply, verifyEmail, verifiedNotice };

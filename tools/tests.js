@@ -298,6 +298,54 @@ async function waitUp(url, tries = 60) {
     r = await adm('POST', '/api/config', { key: 'bogus_key', value: '1' }, { 'X-CSRF-Token': csrf });
     ok('unknown config key → 400', r.status === 400);
 
+    /* ---------- email verification: link + code + gate ---------- */
+    group('Email verification (link, code, resend, gate)');
+    const keepPub = jars.pub; // restore the original user's session after these signups
+    const obStart = outbox().length;
+    const vEmail = 'ver' + Date.now() + '@test.local';
+    r = await pub('POST', '/api/auth/signup', { name: 'Vera User', email: vEmail, password: 'UserPass123!' });
+    ok('signup → unverified account', r.status === 200 && r.j.user.verified === false);
+    await sleep(300);
+    const vMail = outbox().slice(obStart);
+    const vCode = (/Code: (\d{6})/.exec(vMail) || [])[1];
+    const vToken = (/#\/verify\/([a-f0-9]{48})/.exec(vMail) || [])[1];
+    ok('verification email carries link AND 6-digit code', !!vCode && !!vToken, 'code ' + vCode);
+    r = await pub('POST', '/api/auth/verify', { code: '000000' === vCode ? '111111' : '000000' });
+    ok('wrong code → 400', r.status === 400);
+    r = await pub('POST', '/api/auth/verify', { code: vCode });
+    ok('correct code → verified', r.status === 200 && r.j.verified === true);
+    r = await pub('POST', '/api/auth/verify', { code: vCode });
+    ok('spent code cannot be replayed → 400 (single-use)', r.status === 400);
+    const v2 = 'ver2' + Date.now() + '@test.local';
+    const ob2 = outbox().length;
+    await pub('POST', '/api/auth/signup', { name: 'Link User', email: v2, password: 'UserPass123!' });
+    await sleep(300);
+    const v2Token = (/#\/verify\/([a-f0-9]{48})/.exec(outbox().slice(ob2)) || [])[1];
+    r = await pub('POST', '/api/auth/verify', { token: v2Token });
+    ok('link token verifies the account', r.status === 200 && r.j.verified === true);
+    r = await pub('POST', '/api/auth/verify/resend', { email: 'nobody' + Date.now() + '@test.local' });
+    ok('resend for unknown email → generic 200', r.status === 200);
+    await sleep(200);
+    ok('verification confirmation email sent', /email is verified/i.test(outbox()));
+    // hard gate (site control flag)
+    await adm('POST', '/api/config', { key: 'require_verified', value: '1' }, { 'X-CSRF-Token': csrf });
+    const v3 = 'ver3' + Date.now() + '@test.local';
+    const ob3 = outbox().length;
+    await pub('POST', '/api/auth/signup', { name: 'Gated User', email: v3, password: 'UserPass123!' });
+    await sleep(300);
+    const v3Jar = jars.pub; jars.pub = v3Jar;
+    r = await pub('GET', '/api/voices');
+    ok('gate on → unverified user blocked (403 + verify flag)', r.status === 403 && r.j.verify === true);
+    r = await pub('GET', '/api/support/state');
+    ok('gate on → support stays reachable', r.status === 200);
+    const v3Code = (/Code: (\d{6})/.exec(outbox().slice(ob3)) || [])[1];
+    r = await pub('POST', '/api/auth/verify', { code: v3Code });
+    ok('gated user verifies by code', r.status === 200);
+    r = await pub('GET', '/api/voices');
+    ok('after verification → studios unlocked', r.status === 200);
+    jars.pub = keepPub;
+    await adm('POST', '/api/config', { key: 'require_verified', value: '0' }, { 'X-CSRF-Token': csrf });
+
     /* ---------- agents & voices moderation ---------- */
     group('Agents & voices moderation');
     r = await adm('GET', '/api/docs?type=agents&q=' + encodeURIComponent('Test Bot'));

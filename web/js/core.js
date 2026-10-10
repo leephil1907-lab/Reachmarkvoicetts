@@ -271,6 +271,43 @@ function afterMount(node, route, path) {
   chromeFor(route, path);
   route.mounted?.(node);
   currentView = path;
+  refreshVerifyBanner();
+}
+
+/* ---------- email verification: banner + sheet (link or 6-digit code) ---------- */
+export function verifySheet() {
+  const codeIn = h('input', { class: 'input', placeholder: '6-digit code', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code' });
+  const msg = h('p', { class: 'tiny muted', style: { margin: '0 0 10px' } }, 'We emailed a verification link and a 6-digit code to ', h('b', {}, db.user?.email || ''), '. Paste the code, or open the link on any device — both work.');
+  sheet('Verify your email', (box, close) => {
+    box.append(msg, codeIn,
+      h('div', { style: { display: 'flex', gap: '8px', marginTop: '14px' } },
+        h('button', { class: 'btn primary', style: { flex: 1 }, onclick: async e => {
+          e.currentTarget.disabled = true;
+          try {
+            await api('/api/auth/verify', { method: 'POST', body: { code: codeIn.value.trim() } });
+            if (db.user) db.user.verified = true;
+            toast('Email verified ✅', 'mail'); close(); refreshVerifyBanner();
+          } catch (e2) { toast(e2.message, 'close'); e.currentTarget.disabled = false; }
+        } }, icon('check'), 'Verify code'),
+        h('button', { class: 'btn', onclick: async e => {
+          e.currentTarget.disabled = true;
+          try { const r = await api('/api/auth/verify/resend', { method: 'POST', body: { email: db.user?.email } }); toast(r.message, 'mail'); }
+          catch (e2) { toast(e2.message, 'close'); }
+          e.currentTarget.disabled = false;
+        } }, icon('refresh'), 'Resend email')));
+    setTimeout(() => codeIn.focus(), 80);
+  });
+}
+export function refreshVerifyBanner() {
+  const main = document.querySelector('#main'); if (!main) return;
+  let b = document.getElementById('verify-banner');
+  if (!db.user || db.user.verified) { if (b) b.remove(); return; }
+  if (b) return;
+  b = h('div', { id: 'verify-banner', class: 'verify-banner', role: 'status' },
+    h('span', { style: { flex: '1', minWidth: '0' } }, '📬 ', h('b', {}, 'Verify your email'), h('span', { class: 'hide-sm' }, ' — a link and a 6-digit code are waiting in ' + db.user.email + '.')),
+    h('button', { class: 'btn sm primary', onclick: () => verifySheet() }, icon('mail'), 'Verify now'),
+    h('button', { class: 'iconbtn', 'aria-label': 'Dismiss verification banner', html: icons.close, onclick: () => b.remove() }));
+  main.insertBefore(b, main.firstElementChild);
 }
 export function stag(root) {
   root.querySelectorAll('[data-stag]').forEach(box => [...box.children].forEach((c, i) => c.style.setProperty('--i', i)));

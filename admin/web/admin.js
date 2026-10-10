@@ -173,7 +173,7 @@ VIEWS.users = async el => {
   <div class="panel" style="padding:6px"><table id="utable"></table></div>`;
   const draw = async () => {
     const j = await api('/api/users?q=' + encodeURIComponent(userQ));
-    const cols = [['name', 'Name'], ['email', 'Email'], ['plan', 'Plan'], ['credits', 'Credits'], ['minutes', 'Minutes'], ['created', 'Signup'], ['last_seen', 'Last seen'], ['status', 'Status']];
+    const cols = [['name', 'Name'], ['email', 'Email'], ['plan', 'Plan'], ['credits', 'Credits'], ['minutes', 'Minutes'], ['created', 'Signup'], ['last_seen', 'Last seen'], ['verified', 'Email'], ['status', 'Status']];
     const rows = j.users.slice().sort((a, b) => { const x = a[userSort.k] ?? '', y = b[userSort.k] ?? ''; return (x < y ? -1 : x > y ? 1 : 0) * userSort.dir; });
     $('#ucount').textContent = rows.length + ' accounts';
     $('#utable').innerHTML = `<tr>${cols.map(c => `<th data-k="${c[0]}">${c[1]}${userSort.k === c[0] ? (userSort.dir > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('')}<th></th></tr>` +
@@ -182,6 +182,7 @@ VIEWS.users = async el => {
         <td><span class="pill ${esc(r.plan)}">${esc(r.plan)}</span></td>
         <td class="mono">${r.credits.toLocaleString()}</td><td class="mono">${r.minutes}</td>
         <td class="tiny">${fmtDate(r.created)}</td><td class="tiny">${fmtAgo(r.last_seen)}</td>
+        <td><span class="pill ${r.verified ? 'active' : 'pending'}">${r.verified ? 'verified' : 'unverified'}</span></td>
         <td><span class="pill ${esc(r.status)}">${esc(r.status)}</span></td>
         <td><button class="btn sm" data-open="${esc(r.id)}">Open</button></td></tr>`).join('');
     $('#utable').querySelectorAll('th[data-k]').forEach(th => th.onclick = () => { const k = th.dataset.k; userSort = { k, dir: userSort.k === k ? -userSort.dir : 1 }; draw(); });
@@ -202,6 +203,7 @@ async function openUser(id) {
       <b>Credits</b><span class="mono">${u.credits.toLocaleString()}</span>
       <b>Minutes</b><span class="mono">${u.minutes}</span>
       <b>Status</b><span class="pill ${u.suspended ? 'suspended' : 'active'}">${u.suspended ? 'suspended' : 'active'}</span>
+      <b>Email</b><span class="pill ${u.verified ? 'active' : 'pending'}">${u.verified ? 'verified' : 'unverified'}</span>
       <b>Role</b><span class="pill ${esc(u.role)}">${esc(u.role)}</span>
       <b>Signup</b><span>${fmtDate(u.created)}</span>
       <b>Last seen</b><span>${fmtAgo(u.last_seen)}</span>
@@ -494,6 +496,7 @@ VIEWS.site = async el => {
     <div class="panel"><h3>Operations</h3>
       <div class="flag-row"><span>Maintenance mode <span class="tiny dim">(public APIs return 503; support stays open)</span></span><div class="toggle ${cfg.maintenance === '1' ? 'on' : ''}" id="t-maint"></div></div>
       <div class="flag-row"><span>New signups</span><div class="toggle ${cfg.signup_on === '1' ? 'on' : ''}" id="t-signup"></div></div>
+      <div class="flag-row"><span>Require verified email <span class="tiny dim">(unverified users blocked from studios until they verify)</span></span><div class="toggle ${cfg.require_verified === '1' ? 'on' : ''}" id="t-reqver"></div></div>
       <label style="display:block;margin-top:12px" class="tiny dim">Announcement banner (empty = hidden)
         <input id="t-ann" value="${esc(cfg.announcement || '')}" maxlength="200" style="margin-top:6px"></label>
       <button class="btn sm" id="t-ann-save" style="margin-top:8px">Save announcement</button>
@@ -517,6 +520,7 @@ VIEWS.site = async el => {
   </div>`;
   $('#t-maint').onclick = e => set('maintenance', cfg.maintenance === '1' ? '0' : '1').then(() => VIEWS.site(el));
   $('#t-signup').onclick = e => set('signup_on', cfg.signup_on === '1' ? '0' : '1').then(() => VIEWS.site(el));
+  $('#t-reqver').onclick = e => set('require_verified', cfg.require_verified === '1' ? '0' : '1').then(() => VIEWS.site(el));
   $('#t-ann-save').onclick = () => set('announcement', $('#t-ann').value.trim());
   $('#t-cred-save').onclick = () => set('signup_credits', String(parseInt($('#t-cred').value, 10) || 0));
   $('#t-costs').onclick = () => {

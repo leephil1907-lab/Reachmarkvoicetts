@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
   minutes REAL NOT NULL DEFAULT 0, trial_used INTEGER NOT NULL DEFAULT 0,
   trial_ends INTEGER, created INTEGER NOT NULL,
   role TEXT NOT NULL DEFAULT 'user', suspended INTEGER NOT NULL DEFAULT 0,
-  last_seen INTEGER, totp_secret TEXT, totp_enabled INTEGER NOT NULL DEFAULT 0
+  last_seen INTEGER, totp_secret TEXT, totp_enabled INTEGER NOT NULL DEFAULT 0,
+  email_verified INTEGER NOT NULL DEFAULT 0, verify_token TEXT, verify_code TEXT, verify_exp INTEGER
 );
 CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, uid TEXT NOT NULL, exp INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS admin_sessions (token TEXT PRIMARY KEY, uid TEXT NOT NULL, exp INTEGER NOT NULL, csrf TEXT NOT NULL);
@@ -55,20 +56,25 @@ for (const [col, ddl] of [
   ['last_seen', 'ALTER TABLE users ADD COLUMN last_seen INTEGER'],
   ['totp_secret', 'ALTER TABLE users ADD COLUMN totp_secret TEXT'],
   ['totp_enabled', 'ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0'],
+  ['email_verified', 'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0'],
+  ['verify_token', 'ALTER TABLE users ADD COLUMN verify_token TEXT'],
+  ['verify_code', 'ALTER TABLE users ADD COLUMN verify_code TEXT'],
+  ['verify_exp', 'ALTER TABLE users ADD COLUMN verify_exp INTEGER'],
 ]) { try { if (!db.prepare('SELECT ' + col + ' FROM users LIMIT 1').get()) {} } catch { try { db.exec(ddl); } catch {} } }
 
 /* ---------- users ---------- */
 const qUserById = db.prepare('SELECT * FROM users WHERE id = ?');
 const qUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
-const qUserInsert = db.prepare(`INSERT INTO users (id,name,email,salt,pass,credits,plan,minutes,trial_used,trial_ends,created,role,suspended,last_seen,totp_secret,totp_enabled)
-  VALUES (@id,@name,@email,@salt,@pass,@credits,@plan,@minutes,@trial_used,@trial_ends,@created,@role,@suspended,@last_seen,@totp_secret,@totp_enabled)`);
+const qUserInsert = db.prepare(`INSERT INTO users (id,name,email,salt,pass,credits,plan,minutes,trial_used,trial_ends,created,role,suspended,last_seen,totp_secret,totp_enabled,email_verified,verify_token,verify_code,verify_exp)
+  VALUES (@id,@name,@email,@salt,@pass,@credits,@plan,@minutes,@trial_used,@trial_ends,@created,@role,@suspended,@last_seen,@totp_secret,@totp_enabled,@email_verified,@verify_token,@verify_code,@verify_exp)`);
 const qUserSave = db.prepare(`UPDATE users SET name=@name, email=@email, salt=@salt, pass=@pass, credits=@credits, plan=@plan, minutes=@minutes,
   trial_used=@trial_used, trial_ends=@trial_ends, role=@role, suspended=@suspended, last_seen=@last_seen,
-  totp_secret=@totp_secret, totp_enabled=@totp_enabled WHERE id=@id`);
+  totp_secret=@totp_secret, totp_enabled=@totp_enabled, email_verified=@email_verified, verify_token=@verify_token,
+  verify_code=@verify_code, verify_exp=@verify_exp WHERE id=@id`);
 const users = {
   byId: id => qUserById.get(id) || null,
   byEmail: email => qUserByEmail.get(email) || null,
-  create: u => { qUserInsert.run({ role: 'user', suspended: 0, last_seen: null, totp_secret: null, totp_enabled: 0, ...u }); return qUserById.get(u.id); },
+  create: u => { qUserInsert.run({ role: 'user', suspended: 0, last_seen: null, totp_secret: null, totp_enabled: 0, email_verified: 0, verify_token: null, verify_code: null, verify_exp: null, ...u }); return qUserById.get(u.id); },
   save: u => { qUserSave.run(u); return qUserById.get(u.id); },
   all: () => db.prepare('SELECT id,name,email,credits,plan,minutes,trial_used,trial_ends,created,role,suspended,last_seen FROM users ORDER BY created DESC').all(),
   del: id => db.transaction(uid => {
@@ -184,7 +190,7 @@ const support = {
 
 /* ---------- site config ---------- */
 const DEFAULT_CONFIG = {
-  maintenance: '0', announcement: '', signup_on: '1',
+  maintenance: '0', announcement: '', signup_on: '1', require_verified: '0',
   costs: JSON.stringify({ ttsPer40: 1, ttsMin: 5, vc: 20, match: 150, separate: 30, dub: 15, chat: 2 }),
   signup_credits: '10000', default_voice: '',
   flags: JSON.stringify({ tts: 1, changer: 1, match: 1, design: 1, dub: 1, lip: 1, sep: 1, agents: 1, support: 1 }),

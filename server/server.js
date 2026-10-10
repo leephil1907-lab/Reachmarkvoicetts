@@ -145,7 +145,15 @@ function startSession(res, uid, secure) {
   store.sessions.add(token, uid, Date.now() + 30 * 864e5);
   return `rm=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}${secure ? '; Secure' : ''}`;
 }
-const pubUser = u => ({ id: u.id, name: u.name, email: u.email, credits: u.credits, plan: u.plan, minutes: Math.round(u.minutes * 10) / 10, trialEnds: u.trial_ends || null, created: u.created });
+const pubUser = u => ({ id: u.id, name: u.name, email: u.email, credits: u.credits, plan: u.plan, minutes: Math.round(u.minutes * 10) / 10, trialEnds: u.trial_ends || null, created: u.created, verified: !!u.email_verified });
+/* email verification: single 24h window carrying BOTH a link token and a 6-digit code */
+function issueVerification(u) {
+  const token = crypto.randomBytes(24).toString('hex');
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  u.email_verified = u.email_verified || 0; u.verify_token = token; u.verify_code = code; u.verify_exp = Date.now() + 24 * 3600 * 1000;
+  store.users.save(u);
+  return { token, code };
+}
 const creditHeader = user => ({ 'X-Reachmark-Credits': String(user.credits) });
 const clientIp = req => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'local';
 
@@ -219,6 +227,8 @@ const server = http.createServer(async (req, res) => {
       userSamplesDir(uid);
       store.agents.add(uid, guideAgent());
       mail.send({ to: email, ...tpl.welcome({ name, email, credits: user.credits, url: originOf(req) }) }).catch(() => {});
+      const vf = issueVerification(user);
+      mail.send({ to: email, ...tpl.verifyEmail({ name, email, url: originOf(req), token: vf.token, code: vf.code }) }).catch(() => {});
       return json(res, 200, { user: pubUser(user), fresh: true }, { 'Set-Cookie': startSession(res, uid, secure) });
     }
     if (p === '/api/auth/login' && req.method === 'POST') {
@@ -265,6 +275,35 @@ const server = http.createServer(async (req, res) => {
       mail.send({ to: u.email, ...tpl.passwordChanged({ name: u.name }) }).catch(() => {});
       return json(res, 200, { ok: true });
     }
+    /* ---- email verification: link token OR 6-digit code, both single-window (24h) ---- */
+    if (p === '/api/auth/verify' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e5));
+      const token = str(b.token, 64) || '', code = String(b.code || '').trim();
+      if (!store.rateLimit('verify:' + clientIp(req), 20, 15 * 60 * 1000)) return json(res, 429, { error: 'Too many attempts. Try again in 15 minutes.' });
+      const u = token
+        ? store.db.prepare('SELECT * FROM users WHERE verify_token = ?').get(token)
+        : (/^\d{6}$/.test(code) ? store.db.prepare('SELECT * FROM users WHERE verify_code = ?').get(code) : null);
+      if (!u || u.email_verified) {
+        if (u && u.email_verified) return json(res, 200, { ok: true, verified: true, user: pubUser(u), already: true });
+        return json(res, 400, { error: 'That verification link or code is invalid or has expired.' });
+      }
+      if (u.verify_exp && u.verify_exp < Date.now()) return json(res, 400, { error: 'That verification link or code has expired — resend from the app.' });
+      u.email_verified = 1; u.verify_token = null; u.verify_code = null; u.verify_exp = null;
+      store.users.save(u);
+      mail.send({ to: u.email, ...tpl.verifiedNotice({ name: u.name }) }).catch(() => {});
+      return json(res, 200, { ok: true, verified: true, user: pubUser(u) });
+    }
+    if (p === '/api/auth/verify/resend' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e5));
+      const email = str(b.email, 200)?.trim().toLowerCase() || '';
+      if (!store.rateLimit('vresend:' + clientIp(req) + ':' + email, 3, 15 * 60 * 1000)) return json(res, 429, { error: 'Too many resends. Try again in 15 minutes.' });
+      const u = email && store.users.byEmail(email);
+      if (u && !u.email_verified) {
+        const v = issueVerification(u);
+        mail.send({ to: u.email, ...tpl.verifyEmail({ name: u.name, email: u.email, url: originOf(req), token: v.token, code: v.code }) }).catch(() => {});
+      }
+      return json(res, 200, { ok: true, message: 'If that account is still unverified, a fresh link and code are on the way.' });
+    }
     if (p === '/api/auth/me') {
       const c = cookieUser(req);
       return c ? json(res, 200, { user: pubUser(c.user) }) : json(res, 401, { error: 'not signed in' });
@@ -290,6 +329,8 @@ const server = http.createServer(async (req, res) => {
     if (!cu) return json(res, 401, { error: 'not signed in' });
     const user = cu.user, uid = user.id;
     if (user.suspended) return json(res, 403, { error: 'This account is suspended. Contact support@reachmarkdigital.com.' });
+    if (store.config.get('require_verified') === '1' && !user.email_verified && !p.startsWith('/api/support') && p !== '/api/me')
+      return json(res, 403, { error: 'Please verify your email address to continue — the link and 6-digit code are in your inbox.', verify: true });
     if (!user.last_seen || Date.now() - user.last_seen > 60000) { user.last_seen = Date.now(); store.users.save(user); }
     const slots = user.plan === 'plus' ? 10 : 3;
     const costs = store.config.costs();

@@ -1,5 +1,5 @@
 // Reachmark Audio — signup & login (real accounts, 10,000 ✦ on signup).
-import { h, icon, icons, routes, navigate, toast, api, db, refreshAll, sheet, modal } from './core.js';
+import { h, icon, icons, routes, navigate, toast, api, db, refreshAll, sheet, modal, refreshVerifyBanner } from './core.js';
 
 routes['/auth'] = {
   title: 'Welcome', public: true,
@@ -73,6 +73,58 @@ routes['/auth'] = {
         h('div', { class: 'center tiny faint', style: { marginTop: '10px' } },
           'By continuing you agree to our ', h('a', { class: 'maillink', onclick: () => navigate('/terms') }, 'Terms'), ' & ', h('a', { class: 'maillink', onclick: () => navigate('/privacy') }, 'Privacy Policy'), '.', h('br'), 'Reachmark Audio is a product of Reachmark Digital.')));
   },
+};
+
+/* ---------- email verification: link landing page + code entry ---------- */
+function verifyView(withToken) {
+  return async ({ node, params }) => {
+    const card = h('div', { class: 'auth-card card', style: { maxWidth: '440px', margin: '40px auto', textAlign: 'center', padding: '26px 22px' } });
+    node.append(h('div', { class: 'authwrap' }, card));
+    const success = (already) => {
+      if (db.user) { db.user.verified = true; refreshVerifyBanner(); }
+      card.replaceChildren(h('div', { style: { fontSize: '44px' } }, '✅'),
+        h('b', { style: { fontSize: '19px', display: 'block', margin: '8px 0 4px' } }, already ? 'Already verified' : 'Email verified!'),
+        h('p', { class: 'muted', style: { fontSize: '13.5px' } }, 'Your Reachmark Digital account is confirmed — every studio is unlocked.'),
+        h('button', { class: 'btn primary block', style: { marginTop: '14px' }, onclick: () => navigate(db.user ? '/home' : '/auth') }, icon('spark'), db.user ? 'Back to the studio' : 'Continue to log in'));
+    };
+    const fail = (message, soft) => {
+      const codeIn = h('input', { class: 'input', placeholder: '6-digit code', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code', style: { textAlign: 'center', letterSpacing: '.3em', fontSize: '18px' } });
+      const err = h('div', { class: soft ? 'tiny muted' : 'auth-err', style: soft ? { margin: '0 0 10px' } : {} }, message);
+      card.replaceChildren(h('div', { style: { fontSize: '44px' } }, '✉️'),
+        h('b', { style: { fontSize: '19px', display: 'block', margin: '8px 0 4px' } }, 'Enter your 6-digit code'),
+        h('p', { class: 'muted', style: { fontSize: '13.5px' } }, 'The link is one option — the code in the same email works everywhere:'),
+        err, codeIn,
+        h('button', { class: 'btn primary block', style: { marginTop: '12px' }, onclick: async e => {
+          e.currentTarget.disabled = true;
+          try { const r = await api('/api/auth/verify', { method: 'POST', body: { code: codeIn.value.trim() } }); success(r.already); }
+          catch (e2) { err.className = 'auth-err'; err.textContent = e2.message; e.currentTarget.disabled = false; }
+        } }, icon('check'), 'Verify my email'),
+        h('button', { class: 'btn ghost block', onclick: async e => {
+          e.currentTarget.disabled = true;
+          try { const r = await api('/api/auth/verify/resend', { method: 'POST', body: { email: db.user?.email || codeIn.value } }); toast(r.message, 'mail'); }
+          catch (e2) { toast(e2.message, 'close'); }
+          e.currentTarget.disabled = false;
+        } }, icon('refresh'), 'Resend the email'));
+      setTimeout(() => codeIn.focus(), 80);
+    };
+    if (withToken) {
+      card.replaceChildren(h('i', { class: 'spin' }), h('p', { class: 'muted', style: { marginTop: '10px' } }, 'Verifying your email…'));
+      try { const r = await api('/api/auth/verify', { method: 'POST', body: { token: params[0] } }); success(r.already); }
+      catch (e) { fail(e.message, false); }
+    } else {
+      fail('Check your inbox — the code looks like 4 8 2 9 1 5.', true);
+    }
+  };
+}
+routes['/verify/:token'] = {
+  title: 'Verify email', public: true,
+  top: () => ({ back: true, title: 'Email verification', sub: 'Reachmark Audio · Reachmark Digital' }),
+  view: verifyView(true),
+};
+routes['/verify'] = {
+  title: 'Verify email', public: true,
+  top: () => ({ back: true, title: 'Email verification', sub: 'Enter the 6-digit code from your inbox' }),
+  view: verifyView(false),
 };
 
 export function welcomeSheet() {

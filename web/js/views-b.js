@@ -1,5 +1,5 @@
 // Reachmark Audio — explore views: discover, dubbing, lip sync, agents, calls, account, support, engines.
-import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn, fileTooBig, routeCleanup } from './core.js';
+import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn, fileTooBig, routeCleanup, verifySheet } from './core.js';
 import { Player, serverTTS, browserSpeak, pickFile, LipRenderer, AC } from './audio.js';
 import { myVoices, models, voicePicker, playerRow, exprControls, LANGS, langPicker } from './views-a.js';
 
@@ -642,7 +642,15 @@ routes['/account'] = {
                   catch (e) { toast(e.message, 'close'); }
                 } }, icon('spark'), 'Start 7-day Plus trial'),
                 h('button', { class: 'btn block', onclick: () => location.href = 'mailto:support@reachmarkdigital.com?subject=Reachmark%20Audio%20Plus' }, icon('mail'), 'Contact sales')))), }, 'Upgrade')));
+    const verCard = h('div', { class: 'card', style: { display: 'flex', gap: '12px', alignItems: 'center' } },
+      h('span', { class: 'avatar', style: { background: u?.verified ? 'var(--lime)' : 'var(--orange)', color: '#171a09' } }, icon(u?.verified ? 'check' : 'mail')),
+      h('div', { style: { flex: '1', minWidth: 0 } },
+        h('b', {}, u?.verified ? 'Email verified' : 'Email not verified yet'),
+        h('small', { class: 'muted', style: { display: 'block' } }, u?.verified ? u.email + ' · confirmed — you are all set.' : 'We sent a verification link and a 6-digit code to ' + u.email + '.')),
+      u?.verified ? h('span', { class: 'badge', style: { color: 'var(--lime)', borderColor: 'color-mix(in srgb, var(--lime) 40%, transparent)' } }, 'VERIFIED')
+        : h('button', { class: 'btn sm primary', onclick: () => verifySheet() }, icon('mail'), 'Verify now'));
     node.append(h('div', { 'data-stag': '' },
+      verCard,
       h('div', { class: 'procard' },
         h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center' } },
           h('span', { html: `<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#cff05a"/><circle cx="32" cy="32" r="30" fill="none" stroke="#f4f1e9" stroke-width="3"/><text x="32" y="43" font-size="34" font-weight="900" text-anchor="middle" fill="#151310" font-family="system-ui">R</text><circle cx="47" cy="17" r="4" fill="#151310"/></svg>` }),

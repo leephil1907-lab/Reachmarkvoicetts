@@ -291,6 +291,9 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2)}
 .bub.sys{background:transparent; border:1px dashed var(--line2); color:var(--faint); font-size:12.5px; align-self:center; max-width:92%; text-align:center; padding:7px 13px; border-radius:12px}
 .announce{position:fixed; top:0; left:0; right:0; z-index:120; display:flex; align-items:center; justify-content:center; gap:12px; padding:9px 16px; background:linear-gradient(90deg, color-mix(in srgb, var(--orange) 85%, var(--card)), color-mix(in srgb, var(--lime) 60%, var(--card))); color:#171a09; font-weight:700; font-size:13.5px; border:0; border-bottom:1px solid rgba(0,0,0,.25); cursor:pointer; animation:riseIn .4s var(--ease) both}
 .announce small{opacity:.65; font-weight:600}
+.verify-banner{display:flex; align-items:center; gap:10px; padding:9px 14px; background:linear-gradient(90deg, color-mix(in srgb, var(--orange) 22%, var(--card)), var(--card)); border-bottom:1px solid color-mix(in srgb, var(--orange) 40%, transparent); font-size:13px; animation:riseIn .35s var(--ease) both}
+.verify-banner b{color:var(--txt)}
+@media (max-width:640px){ .hide-sm{display:none} }
 .bub small{display:block; font-size:10px; opacity:.55; margin-bottom:3px; letter-spacing:.06em; text-transform:uppercase}
 .callbar{display:flex; justify-content:center; gap:18px; padding:14px 0 calc(10px + env(safe-area-inset-bottom))}
 .callbar .iconbtn{width:56px;height:56px;background:var(--surface2)}

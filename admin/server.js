@@ -51,7 +51,7 @@ store.db.exec('CREATE TABLE IF NOT EXISTS typing (threadId TEXT PRIMARY KEY, sid
   if (ex) { if (ex.role !== 'admin') { ex.role = 'admin'; store.users.save(ex); } return; }
   const salt = crypto.randomBytes(16).toString('hex');
   hashPass(pass, salt).then(h => {
-    store.users.create({ id: 'a_' + crypto.randomBytes(4).toString('hex'), name: email.split('@')[0], email, salt, pass: h, credits: 0, plan: 'plus', minutes: 0, trial_used: 1, trial_ends: null, created: Date.now(), role: 'admin' });
+    store.users.create({ id: 'a_' + crypto.randomBytes(4).toString('hex'), name: email.split('@')[0], email, salt, pass: h, credits: 0, plan: 'plus', minutes: 0, trial_used: 1, trial_ends: null, created: Date.now(), role: 'admin', email_verified: 1 });
     store.audit(email, 'admin.seed', email, 'boot', null);
     console.log('[admin] seeded first admin account:', email);
   }).catch(e => console.error('[admin] seed failed', e.message));
@@ -208,7 +208,7 @@ const server = http.createServer(async (req, res) => {
       /* ---------- users ---------- */
       if (p === '/api/users' && req.method === 'GET') {
         const q = (u.searchParams.get('q') || '').toLowerCase();
-        let rows = store.users.all().map(x => ({ id: x.id, name: x.name, email: x.email, plan: x.plan, credits: x.credits, minutes: Math.round((x.minutes || 0) * 10) / 10, created: x.created, last_seen: x.last_seen || null, role: x.role, suspended: !!x.suspended, status: x.suspended ? 'suspended' : (x.role !== 'user' ? x.role : 'active') }));
+        let rows = store.users.all().map(x => ({ id: x.id, name: x.name, email: x.email, plan: x.plan, credits: x.credits, minutes: Math.round((x.minutes || 0) * 10) / 10, created: x.created, last_seen: x.last_seen || null, role: x.role, suspended: !!x.suspended, verified: !!x.email_verified, status: x.suspended ? 'suspended' : (x.role !== 'user' ? x.role : 'active') }));
         if (q) rows = rows.filter(r => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
         return json(res, 200, { users: rows });
       }
@@ -216,7 +216,7 @@ const server = http.createServer(async (req, res) => {
         const t = store.users.byId(u.searchParams.get('id') || '');
         if (!t) return json(res, 404, { error: 'User not found.' });
         return json(res, 200, {
-          user: { id: t.id, name: t.name, email: t.email, plan: t.plan, credits: t.credits, minutes: Math.round((t.minutes || 0) * 10) / 10, trial_ends: t.trial_ends, created: t.created, last_seen: t.last_seen, role: t.role, suspended: !!t.suspended },
+          user: { id: t.id, name: t.name, email: t.email, plan: t.plan, credits: t.credits, minutes: Math.round((t.minutes || 0) * 10) / 10, trial_ends: t.trial_ends, created: t.created, last_seen: t.last_seen, role: t.role, suspended: !!t.suspended, verified: !!t.email_verified },
           voices: store.voices.list(t.id).map(v => ({ id: v.id, name: v.name, kind: v.kind, model: v.model, desc: v.desc, disabled: !!v.disabled, created: v.created })),
           agents: store.agents.list(t.id).map(a => ({ id: a.id, name: a.name, role: a.role, language: a.language, system: !!a.system, disabled: !!a.disabled, created: a.created })),
           history: store.history.list(t.id).slice(0, 40),
@@ -403,7 +403,7 @@ const server = http.createServer(async (req, res) => {
         if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
         const b = await body(1e5);
         const key = String(b.key || '');
-        const WHITELIST = ['maintenance', 'announcement', 'signup_on', 'costs', 'signup_credits', 'default_voice', 'flags'];
+        const WHITELIST = ['maintenance', 'announcement', 'signup_on', 'require_verified', 'costs', 'signup_credits', 'default_voice', 'flags'];
         if (!WHITELIST.includes(key)) return json(res, 400, { error: 'Unknown config key.' });
         let value = String(b.value ?? '');
         if (key === 'costs' || key === 'flags') { try { JSON.parse(value); } catch { return json(res, 400, { error: 'Must be valid JSON.' }); } }
@@ -457,7 +457,7 @@ const server = http.createServer(async (req, res) => {
         if (pass.length < 8) return json(res, 400, { error: 'Password must be at least 8 characters.' });
         if (store.users.byEmail(email)) return json(res, 409, { error: 'An account with that email already exists.' });
         const salt = crypto.randomBytes(16).toString('hex');
-        const nu = store.users.create({ id: 'a_' + crypto.randomBytes(4).toString('hex'), name, email, salt, pass: await hashPass(pass, salt), credits: 0, plan: 'plus', minutes: 0, trial_used: 1, trial_ends: null, created: Date.now(), role });
+        const nu = store.users.create({ id: 'a_' + crypto.randomBytes(4).toString('hex'), name, email, salt, pass: await hashPass(pass, salt), credits: 0, plan: 'plus', minutes: 0, trial_used: 1, trial_ends: null, created: Date.now(), role, email_verified: 1 });
         log('admin.create', email, { role });
         return json(res, 200, { ok: true, admin: pubAdmin(nu) });
       }

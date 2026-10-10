@@ -37,6 +37,11 @@ Built for **worldwide use**: accounts, voice translation across languages, and s
   templates, assign/close/reopen, offline users get their reply in-app on next open plus an
   email notification (`SUPPORT_EMAIL`). Messages are rate-limited (10/min), escaped and capped
   (2 000 chars).
+- **Email verification** — signup emails a branded message carrying BOTH a one-click link
+  (`/#/verify/<token>`) and a 6-digit code; either completes verification (single-use, 24 h
+  window). Resend is rate-limited, the Account page and a dismissible banner offer the code
+  box, admins see verified/unverified per user, and Site control has a `require_verified`
+  flag that hard-gates unverified accounts from the studios (support stays open).
 
 ## Honest feature labelling (v1.2)
 
@@ -125,6 +130,20 @@ to the Railway volume mounted at `/data` so accounts, voices and renders persist
 `railway.json` sets the healthcheck (`/api/health`), restart policy and start command
 (`node server/server.js` — the public app; run the admin app as its own service when you
 split storage, see below). Attach a volume with mount path `/data` in the Railway dashboard.
+
+**Variables Railway picks up automatically** — `railway.json → variables` declares every
+key the app reads, so a fresh Railway service is configured on first deploy:
+`NODE_ENV, PORT, ADMIN_PORT, DATA_DIR, PIPER_VOICES_DIR, PUBLIC_URL` (via Railway's
+`${{RAILWAY_PUBLIC_DOMAIN}}` magic variable — emails link to your real domain),
+`ADMIN_URL, SUPPORT_EMAIL, SMTP_HOST, SMTP_PORT, SMTP_USER, MAIL_FROM, LLM_BASE_URL,
+LLM_MODEL`. See `.env.example` for the annotated list.
+
+**The five secrets are created EMPTY on purpose** (this repo is public — secrets never go
+into git): `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SMTP_PASS`, `LLM_API_KEY`,
+`ADMIN_IP_ALLOWLIST`. Paste them once in the Railway dashboard (Variables tab) or via CLI
+(`railway variables set SMTP_PASS=… ADMIN_EMAIL=… ADMIN_PASSWORD=…`); every restart picks
+them up. Without them the app still runs: no admin seeded, mail falls back to
+`data/outbox.log`, agents use the local persona brain.
 
 **Two services, one database — the honest constraint:** both apps share ONE SQLite file on ONE
 persistent disk (WAL makes multi-process access safe), and Render attaches a disk to exactly one
