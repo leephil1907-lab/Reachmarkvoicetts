@@ -56,14 +56,28 @@ routes['/auth'] = {
           } }, icon('mail'), 'Email me a reset link'));
       });
     } }, 'Forgot password?');
-    node.style.paddingBottom = '40px';
+    node.style.paddingBottom = '0';
+    const goSignup = () => { setMode('signup'); const c = document.querySelector('.auth-card'); c && c.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => emailF.focus({ preventScroll: true }), 350); };
+    const scrollTo = (sel) => () => document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    node.append(h('nav', { class: 'lp-nav', 'data-stag': '' },
+      h('div', { class: 'lp-links' },
+        h('button', { onclick: scrollTo('#lp-studios') }, 'Studios'),
+        h('button', { onclick: scrollTo('#lp-studios') }, 'Features'),
+        h('button', { onclick: () => navigate('/terms') }, 'Terms'),
+        h('button', { onclick: () => navigate('/privacy') }, 'Privacy')),
+      h('button', { class: 'btn ghost sm', onclick: () => { setMode('login'); scrollTo('.auth-card')(); } }, 'Log in'),
+      h('button', { class: 'btn primary sm', onclick: goSignup }, icon('spark'), 'Sign up free')));
     node.append(h('div', { class: 'authwrap', 'data-stag': '' },
       h('div', { class: 'auth-hero' },
-        h('div', { class: 'logo-lg logo-img' }, h('img', { src: '/assets/logo-192.png', alt: 'Reachmark Audio' })),
-        h('h1', {}, 'Studio-grade AI voice, for everyone.'),
-        h('p', { class: 'muted' }, 'Reachmark Audio is Reachmark Digital’s worldwide voice studio — neural text-to-speech, Voice Match cloning, dubbing, lip sync and character agents on one professional platform.'),
-        h('div', { class: 'auth-feats' },
-          ['Voice Match cloning from 10 seconds of audio', 'Neural TTS and voice translation in 40+ languages', 'Dubbing and lip sync with video export', 'Character agents that chat and call in their own voice'].map(t => h('div', { class: 'auth-feat' }, t))),
+        h('span', { class: 'lp-eyebrow' }, icon('spark'), 'Reachmark Digital · worldwide voice infrastructure'),
+        h('h1', {}, 'Studio-grade AI voice, ', h('span', { class: 'grad' }, 'indistinguishable from humans.')),
+        h('p', { class: 'muted' }, 'Reachmark Audio turns text into human-grade speech in 40+ languages — clone, design, dub, lip-sync and call with voices that are yours. One professional platform, every language.'),
+        h('div', { class: 'lp-cta' },
+          h('button', { class: 'btn primary lg', onclick: goSignup }, icon('spark'), 'Start free — 10,000 credits'),
+          h('button', { class: 'btn ghost lg', onclick: scrollTo('#lp-studios') }, 'Explore the studios')),
+        h('div', { class: 'lp-stats' },
+          [['6', 'studios'], ['40+', 'languages'], ['10 s', 'voice clone'], ['10,000', 'free credits']].map(([v, l]) => h('div', {}, h('b', {}, v), h('span', {}, l)))),
+        h('div', { class: 'lp-chips' }, ['Voiceovers', 'Dubbing', 'Lip sync', 'Characters', 'Translation', 'Voice changing'].map(t => h('span', {}, t))),
         h('div', { class: 'bars' }, [0, 1, 2, 3, 4, 5, 6].map((i) => h('i', { style: { height: 8 + (i % 4) * 6 + 'px', animationDelay: i * 0.1 + 's' } })))),
       h('div', { class: 'auth-card card' },
         tabs, form, forgot,
@@ -72,6 +86,20 @@ routes['/auth'] = {
           h('a', { href: 'mailto:reachmarkofficial@gmail.com', class: 'maillink' }, 'reachmarkofficial@gmail.com'))),
         h('div', { class: 'center tiny faint', style: { marginTop: '10px' } },
           'By continuing you agree to our ', h('a', { class: 'maillink', onclick: () => navigate('/terms') }, 'Terms'), ' & ', h('a', { class: 'maillink', onclick: () => navigate('/privacy') }, 'Privacy Policy'), '.', h('br'), 'Reachmark Audio is a product of Reachmark Digital.')));
+    node.append(h('div', { class: 'lp-bento', id: 'lp-studios', 'data-stag': '' },
+      [['text', 'Text to Speech', 'Type anything — hear it in any voice you own, in any supported language, with pitch, speed and expression control.'],
+       ['copy', 'Voice Match', 'Instant cloning: ten seconds of audio becomes a tuned neural voice that stays yours across every studio.'],
+       ['swap', 'Voice Changer', 'Professional pitch, timbre and FX chains on any recording — from subtle warmth to full character swaps.'],
+       ['globe', 'Dubbing Studio', 'Translate and re-voice video for worldwide audiences, with downloadable masters.'],
+       ['film', 'Lip Sync', 'Match speech to footage frame-accurately and export WebM ready for publish.'],
+       ['bot', 'Character Agents', 'Agents built from your character bible that chat, act and call people in their own voice.']]
+        .map(([ic, t, d]) => h('button', { class: 'lp-card', onclick: goSignup },
+          h('span', { class: 'qi' }, icon(ic)), h('b', {}, t), h('p', {}, d), h('small', {}, 'Included free with your account')))),
+      h('footer', { class: 'lp-foot' },
+        h('div', { class: 'brand' }, h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: '' })), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))),
+        h('span', { style: { flex: '1' } }, '© 2026 Reachmark Digital · Worldwide voice infrastructure'),
+        h('a', { class: 'maillink', href: 'mailto:support@reachmarkdigital.com' }, 'support@reachmarkdigital.com'),
+        h('a', { class: 'maillink', href: 'mailto:reachmarkofficial@gmail.com' }, 'reachmarkofficial@gmail.com')));
   },
 };
 

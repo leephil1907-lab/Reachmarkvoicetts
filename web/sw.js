@@ -1,7 +1,7 @@
 /* Reachmark Audio — service worker
    PWABuilder checklist: registered at root scope, precached app shell, fetch handler with
    offline navigation fallback, cache-first static assets, network-only for API/auth. */
-const VERSION = 'reachmark-audio-v1.5.0';
+const VERSION = 'reachmark-audio-v1.6.0';
 const SHELL = [
   '/', '/index.html', '/css/app.css', '/manifest.webmanifest',
   '/js/main.js', '/js/core.js', '/js/audio.js', '/js/brain.js', '/js/auth.js', '/js/views-a.js', '/js/views-b.js',
@@ -20,6 +20,21 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  // Google Fonts: cache-first runtime cache so installed-app typography survives offline
+  if (e.request.method === 'GET' && (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com')) {
+    e.respondWith(
+      caches.open('rm-fonts').then(async c => {
+        const hit = await c.match(e.request);
+        if (hit) return hit;
+        try {
+          const res = await fetch(e.request);
+          if (res && res.ok) c.put(e.request, res.clone());
+          return res;
+        } catch (err) { return hit || Response.error(); }
+      })
+    );
+    return;
+  }
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   // never intercept API/auth/streaming calls — credits & sessions must stay live
   if (url.pathname.startsWith('/api/')) return;

@@ -56,6 +56,9 @@ check(html.includes('name="theme-color"'), 'theme-color meta');
 check(html.includes('name="viewport"'), 'viewport meta');
 check(html.includes('rel="manifest"'), 'manifest linked');
 check(!/src="http:|href="http:/.test(html), 'no mixed content in shell');
+check(html.includes('fonts.googleapis.com/css2'), 'Google Fonts stylesheet linked');
+check(html.includes('rel="preconnect" href="https://fonts.gstatic.com"'), 'font preconnects declared');
+check(sw.includes('fonts.gstatic.com'), 'SW runtime-caches Google Fonts for offline');
 console.log('  ℹ️  HTTPS: served over TLS in deployment (preview proxy + your domain)');
 
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
