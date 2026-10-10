@@ -8,7 +8,7 @@
   "display_override": ["standalone", "minimal-ui"],
   "lang": "en",
   "dir": "ltr",
-  "description": "Clone, design, dub, lip-sync and call with AI voices in any language. One merged engine hub: neural TTS, voice conversion, character agents.",
+  "description": "The worldwide AI voice studio: neural text-to-speech and voice translation in any language, Voice Match, voice changer, dubbing, lip sync and character agents that talk and call in their own voice.",
   "categories": ["productivity", "music", "utilities", "business"],
   "background_color": "#151310",
   "theme_color": "#151310",

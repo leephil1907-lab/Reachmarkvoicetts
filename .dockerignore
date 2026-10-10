@@ -1,0 +1,9 @@
+.git
+node_modules
+desktop/node_modules
+desktop/dist
+desktop/out
+data
+engines/piper-voices
+*.wav
+.DS_Store

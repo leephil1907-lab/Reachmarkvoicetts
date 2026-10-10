@@ -98,6 +98,16 @@ docker run -p 8000:8000 -p 8001:8001 -v reachmark-data:/data \
 # or: render.yaml (Docker runtime + 2 GB persistent disk at /data)
 ```
 
+### Deploy (Railway)
+
+`railway.json` + `Dockerfile` are Railway-ready: the Docker build installs Piper in a venv,
+bakes the en/fr/es/de voices **and a render smoke-test** into the image (the build fails if
+Piper or the voices are broken), installs native deps (`npm ci`), then symlinks `/app/data`
+to the Railway volume mounted at `/data` so accounts, voices and renders persist.
+`railway.json` sets the healthcheck (`/api/health`), restart policy and start command
+(`node server/server.js` — the public app; run the admin app as its own service when you
+split storage, see below). Attach a volume with mount path `/data` in the Railway dashboard.
+
 **Two services, one database — the honest constraint:** both apps share ONE SQLite file on ONE
 persistent disk (WAL makes multi-process access safe), and Render attaches a disk to exactly one
 service. `render.yaml` therefore deploys **one container running both processes**
