@@ -110,7 +110,7 @@ function verifyView(withToken) {
     node.append(h('div', { class: 'authwrap' }, card));
     const success = (already) => {
       if (db.user) { db.user.verified = true; refreshVerifyBanner(); }
-      card.replaceChildren(h('div', { style: { fontSize: '44px' } }, '✅'),
+      card.replaceChildren(h('div', { class: 'vbadge' }, icon('check')),
         h('b', { style: { fontSize: '19px', display: 'block', margin: '8px 0 4px' } }, already ? 'Already verified' : 'Email verified!'),
         h('p', { class: 'muted', style: { fontSize: '13.5px' } }, 'Your Reachmark Digital account is confirmed — every studio is unlocked.'),
         h('button', { class: 'btn primary block', style: { marginTop: '14px' }, onclick: () => navigate(db.user ? '/home' : '/auth') }, icon('spark'), db.user ? 'Back to the studio' : 'Continue to log in'));
@@ -118,7 +118,7 @@ function verifyView(withToken) {
     const fail = (message, soft) => {
       const codeIn = h('input', { class: 'input', placeholder: '6-digit code', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code', style: { textAlign: 'center', letterSpacing: '.3em', fontSize: '18px' } });
       const err = h('div', { class: soft ? 'tiny muted' : 'auth-err', style: soft ? { margin: '0 0 10px' } : {} }, message);
-      card.replaceChildren(h('div', { style: { fontSize: '44px' } }, '✉️'),
+      card.replaceChildren(h('div', { class: 'vbadge mail' }, icon('mail')),
         h('b', { style: { fontSize: '19px', display: 'block', margin: '8px 0 4px' } }, 'Enter your 6-digit code'),
         h('p', { class: 'muted', style: { fontSize: '13.5px' } }, 'The link is one option — the code in the same email works everywhere:'),
         err, codeIn,
@@ -156,7 +156,7 @@ routes['/verify'] = {
 };
 
 export function welcomeSheet() {
-  sheet('Welcome to Reachmark Audio 🎙️', (box, close) => {
+  sheet('Welcome to Reachmark Audio', (box, close) => {
     box.append(
       h('div', { class: 'card', style: { background: 'linear-gradient(140deg, color-mix(in srgb, var(--lime) 16%, var(--card)), var(--card))', display: 'flex', gap: '12px', alignItems: 'center' } },
         icon('spark'), h('div', {}, h('b', {}, '10,000 ✦ credits added'), h('small', { class: 'muted' }, 'Your signup gift — spend them across every studio.'))),

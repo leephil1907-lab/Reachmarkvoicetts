@@ -537,3 +537,25 @@ input,textarea{user-select:text;-webkit-user-select:text}
 .lp-foot .brand{padding:0}
 .lp-foot .brand .logo{width:30px;height:30px;border-radius:9px}
 .authwrap{scroll-margin-top:70px}
+
+/* ---------- real-icon badges & avatars ---------- */
+.vbadge{width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--lime) 13%,transparent);color:var(--lime-deep);display:grid;place-items:center;margin:0 auto 6px}
+.vbadge svg{width:30px;height:30px}
+.vbadge.mail{background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet)}
+.avchip svg{width:16px;height:16px}
+.avico{display:grid;place-items:center;width:100%;height:100%}
+.avico svg{width:20px;height:20px}
+.avico.big svg{width:30px;height:30px}
+.announce span svg{width:15px;height:15px;flex:none;color:var(--lime)}
+
+/* ---------- desktop windowing modes (real PWA capabilities) ---------- */
+@media (display-mode: side-panel){
+  #sidebar,#tabbar,.fab-support{display:none!important}
+  .qgrid,.lp-bento{grid-template-columns:1fr}
+  .dash-head .btn{display:none}
+  #topbar{padding:6px 10px}
+}
+@media (display-mode: window-controls-overlay){
+  #topbar{padding-left:calc(env(titlebar-area-x, 0px) + 12px);padding-right:calc(100vw - env(titlebar-area-width, 100vw) - env(titlebar-area-x, 0px) + 12px);-webkit-app-region:drag;app-region:drag}
+  #topbar button,#topbar .brand,#topbar input{-webkit-app-region:no-drag;app-region:no-drag}
+}

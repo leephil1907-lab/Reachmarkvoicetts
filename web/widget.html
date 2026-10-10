@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Reachmark Quick Studio widget</title>
+<style>
+  :root{--canvas:#151310;--card:#201d16;--line:#37322a;--text:#f4f1e9;--muted:#a9a299;--lime:#d3f36b;--lime-deep:#9fc23f}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--canvas);color:var(--text);font:400 14px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:14px}
+  .w{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:150px}
+  .hd{display:flex;align-items:center;gap:10px}
+  .hd img{width:38px;height:38px;border-radius:10px}
+  .hd b{font-size:14px;letter-spacing:-.01em;display:block}
+  .hd small{color:var(--muted);font-size:11px}
+  .st{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:7px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .dot.on{background:var(--lime)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  a.btn{display:inline-flex;align-items:center;gap:7px;background:var(--lime);color:#151310;font-weight:700;font-size:12.5px;padding:9px 13px;border-radius:999px;text-decoration:none}
+  a.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .facts{display:flex;gap:14px;font-size:11px;color:var(--muted)}
+  .facts b{display:block;color:var(--text);font-size:14px}
+</style>
+</head>
+<body>
+<div class="w">
+  <div class="hd">
+    <img src="/assets/logo-192.png" alt="Reachmark Audio">
+    <div><b>Reachmark Audio</b><small>Quick Studio · by Reachmark Digital</small></div>
+  </div>
+  <div class="st"><span class="dot" id="dot"></span><span id="status">Checking engine status…</span></div>
+  <div class="facts">
+    <div><b>6</b>studios</div>
+    <div><b>40+</b>languages</div>
+    <div><b>10,000</b>signup credits</div>
+  </div>
+  <div class="row">
+    <a class="btn" href="/#/studio/tts">Open the studio</a>
+    <a class="btn ghost" href="/#/studio/clone">Voice Match</a>
+  </div>
+</div>
+<script>
+  fetch('/api/health').then(r => r.json()).then(h => {
+    document.getElementById('dot').classList.add('on');
+    document.getElementById('status').textContent = 'Engine online · ' + (h.piper && h.piper.ready ? h.piper.voices + ' neural voices ready' : 'neural engines warming up');
+  }).catch(() => { document.getElementById('status').textContent = 'Engine offline — open the app to retry'; });
+</script>
+</body>
+</html>

@@ -26,7 +26,7 @@ export function voicePicker(sel, onpick) {
   const render = async () => {
     box.replaceChildren();
     const [vs, ms] = await Promise.all([myVoices(), models()]);
-    const all = [...vs.map(v => ({ id: v.id, label: (v.kind === 'clone' ? '🧬 ' : '') + v.name, mine: true })), ...ms.map(m => ({ id: 'm:' + m.id, label: m.flag + ' ' + m.name }))];
+    const all = [...vs.map(v => ({ id: v.id, label: v.name + (v.kind === 'clone' ? ' · cloned' : ''), mine: true })), ...ms.map(m => ({ id: 'm:' + m.id, label: m.flag + ' ' + m.name }))];
     if (!sel.id && all.length) sel.id = state.defaultVoiceId && vs.some(v => v.id === state.defaultVoiceId) ? state.defaultVoiceId : all[0].id;
     for (const v of all) box.append(h('button', { class: 'chip' + (v.id === sel.id ? ' on' : ''), onclick: () => { sel.id = v.id; render(); onpick?.(v); } }, v.label));
   };
@@ -186,6 +186,7 @@ routes['/studio/tts'] = {
     ta.addEventListener('input', upd); upd();
     const sharedText = sessionStorage.getItem('rm_share_text');
     if (sharedText) { ta.value = sharedText.slice(0, 2000); sessionStorage.removeItem('rm_share_text'); upd(); toast('Shared text loaded into the editor', 'text'); }
+    if (sessionStorage.getItem('rm_note')) { sessionStorage.removeItem('rm_note'); setTimeout(() => ta.focus(), 350); toast('Voice note started — type or paste, then render', 'edit'); }
     const out = h('div', { class: 'stack' });
     const gen = h('button', { class: 'btn primary block', onclick: async () => {
       if (!ta.value.trim()) return toast('Type something first', 'edit');
@@ -338,7 +339,7 @@ routes['/studio/clone'] = {
         await refreshVoices();
         state.defaultVoiceId = voice.id; save();
         await pushHistory({ kind: 'clone', title: voice.name, url: voice.sample, meta: voice.desc });
-        modal('Voice matched ✨', (box, close) => {
+        modal('Voice matched', (box, close) => {
           box.append(h('p', { class: 'muted' }, voice.name + ' is live. ' + voice.desc + '. It is now your default voice — and it can speak English, French, Spanish and German with your character intact.'),
             h('div', { class: 'stack', style: { marginTop: '12px' } },
               h('button', { class: 'btn primary block', onclick: () => { close(); navigate('/studio/tts'); } }, 'Try it in Text to Speech'),

@@ -47,6 +47,7 @@ export const icons = {
   layers: I('<path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/>'),
   cpu: I('<rect x="6" y="6" width="12" height="12" rx="3"/><rect x="10" y="10" width="4" height="4" rx="1"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2 2M19 5l-2 2M5 19l2-2M19 19l-2-2"/>'),
   check: I('<path d="m5 12.5 4.5 4.5L19 7"/>'),
+  megaphone: I('<path d="M3 11v3l13 4V7L3 11Z"/><path d="M16 10.5a3.5 3.5 0 0 1 0 4"/><path d="M6 14v4a1 1 0 0 0 1 1h2"/>'),
   chevron: I('<path d="m9 5 7 7-7 7"/>'),
   chevD: I('<path d="m5 9 7 7 7-7"/>'),
   search: I('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
@@ -286,7 +287,7 @@ export function verifySheet() {
           try {
             await api('/api/auth/verify', { method: 'POST', body: { code: codeIn.value.trim() } });
             if (db.user) db.user.verified = true;
-            toast('Email verified ✅', 'mail'); close(); refreshVerifyBanner();
+            toast('Email verified', 'mail'); close(); refreshVerifyBanner();
           } catch (e2) { toast(e2.message, 'close'); e.currentTarget.disabled = false; }
         } }, icon('check'), 'Verify code'),
         h('button', { class: 'btn', onclick: async e => {
@@ -304,7 +305,7 @@ export function refreshVerifyBanner() {
   if (!db.user || db.user.verified) { if (b) b.remove(); return; }
   if (b) return;
   b = h('div', { id: 'verify-banner', class: 'verify-banner', role: 'status' },
-    h('span', { style: { flex: '1', minWidth: '0' } }, '📬 ', h('b', {}, 'Verify your email'), h('span', { class: 'hide-sm' }, ' — a link and a 6-digit code are waiting in ' + db.user.email + '.')),
+    h('span', { style: { flex: '1', minWidth: '0', display: 'flex', gap: '9px', alignItems: 'center' } }, icon('mail'), h('span', {}, h('b', {}, 'Verify your email'), h('span', { class: 'hide-sm' }, ' — a link and a 6-digit code are waiting in ' + db.user.email + '.'))),
     h('button', { class: 'btn sm primary', onclick: () => verifySheet() }, icon('mail'), 'Verify now'),
     h('button', { class: 'iconbtn', 'aria-label': 'Dismiss verification banner', html: icons.close, onclick: () => b.remove() }));
   main.insertBefore(b, main.firstElementChild);

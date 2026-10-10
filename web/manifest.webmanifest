@@ -5,7 +5,7 @@
   "scope": "/",
   "start_url": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": ["window-controls-overlay", "tabbed", "standalone", "minimal-ui"],
   "lang": "en",
   "dir": "ltr",
   "description": "The worldwide AI voice studio by Reachmark Digital: neural text-to-speech and voice translation in any language, Voice Match, voice changer, dubbing, lip sync and character agents that talk and call in their own voice.",
@@ -21,9 +21,9 @@
     { "src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Text to Speech", "short_name": "TTS", "description": "Generate speech in any voice and language", "url": "/#/studio/tts", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] },
-    { "name": "Voice Match", "short_name": "Match", "description": "Match a neural voice to you from 10 seconds of audio", "url": "/#/studio/clone", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] },
-    { "name": "Support Center", "short_name": "Support", "description": "Live chat and support sessions", "url": "/#/support", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] }
+    { "name": "Text to Speech", "short_name": "TTS", "description": "Generate speech in any voice and language", "url": "/#/studio/tts", "icons": [{ "src": "/assets/shortcut-tts-96.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "Voice Match", "short_name": "Match", "description": "Match a neural voice to you from 10 seconds of audio", "url": "/#/studio/clone", "icons": [{ "src": "/assets/shortcut-match-96.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "Support Center", "short_name": "Support", "description": "Live chat and support sessions", "url": "/#/support", "icons": [{ "src": "/assets/shortcut-support-96.png", "sizes": "96x96", "type": "image/png" }] }
   ],
   "screenshots": [
     { "src": "/assets/screenshot-desktop.png", "sizes": "1280x800", "type": "image/png", "form_factor": "wide", "label": "Reachmark Audio dashboard on desktop" },
@@ -40,6 +40,34 @@
       "accept": { "audio/*": [".wav", ".mp3", ".ogg", ".m4a", ".flac"] }
     }
   ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+reachmark",
+      "url": "/?proto=%s"
+    }
+  ],
+  "note_taking": {
+    "new_note_url": "/?note=1"
+  },
   "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
+  "edge_side_panel": { "preferred_width": 420 },
+  "tab_strip": { "new_tab_url": "/#/studio/tts" },
+  "widgets": [
+    {
+      "name": "Reachmark Quick Studio",
+      "description": "Jump straight into the Reachmark Audio studios and see live engine status.",
+      "tag": "reachmark-quick-studio",
+      "ms_ac_template": "/widget/quick-studio.ac.json",
+      "data": "/widget.html",
+      "type": "text/html",
+      "update": 60,
+      "screenshots": [
+        { "src": "/assets/widget-screenshot.png", "sizes": "600x400", "type": "image/png", "label": "Reachmark Quick Studio widget" }
+      ],
+      "icons": [
+        { "src": "/assets/icon-96.png", "sizes": "96x96", "type": "image/png" }
+      ]
+    }
+  ],
   "prefer_related_applications": false
 }

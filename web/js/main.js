@@ -119,7 +119,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     if (cfg.maintenance) toast('Under maintenance — studios are briefly paused', 'cpu');
     if (cfg.announcement) {
       const bar = h('button', { class: 'announce', 'aria-label': 'Dismiss announcement', onclick: e => e.currentTarget.remove() },
-        h('span', {}, '📣 ' + cfg.announcement), h('small', {}, 'tap to dismiss'));
+        h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, icon('megaphone'), cfg.announcement), h('small', {}, 'tap to dismiss'));
       document.body.prepend(bar);
     }
   } catch {}
@@ -142,7 +142,22 @@ try {
         if (state.user) navigate('/studio/tts');
       }, 900);
     }
-    history.replaceState(null, '', location.pathname + location.hash);
+    const proto = q.get('proto');
+    if (proto) {
+      const t = decodeURIComponent(proto.replace(/^web\+reachmark:/, '')).trim();
+      if (t) {
+        sessionStorage.setItem('rm_share_text', t.slice(0, 2000));
+        setTimeout(() => {
+          toast('Received via web+reachmark — ready in Text to Speech', 'text');
+          if (state.user) navigate('/studio/tts');
+        }, 900);
+      }
+    }
+    if (q.get('note')) {
+      sessionStorage.setItem('rm_note', '1');
+      setTimeout(() => { if (state.user) navigate('/studio/tts'); }, 900);
+    }
+    if (proto || q.get('note')) history.replaceState(null, '', location.pathname + location.hash);
   }
 } catch {}
 if ('launchQueue' in window) {

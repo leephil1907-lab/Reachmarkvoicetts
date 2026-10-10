@@ -213,7 +213,7 @@ routes['/agents'] = {
           h('button', { class: 'iconbtn', html: icons.phone, 'aria-label': 'Call', onclick: () => navigate('/call/' + a.id) }),
           h('button', { class: 'iconbtn', html: icons.send, 'aria-label': 'Chat', onclick: () => navigate('/agent/' + a.id) }));
         const card = h('div', { class: 'card', style: { display: 'flex', gap: '13px', alignItems: 'center' } },
-          h('span', { class: 'avatar ' + (a.av || '') }, a.emoji || a.name[0]?.toUpperCase()),
+          h('span', { class: 'avatar ' + (a.av || '') }, icons[a.emoji] ? h('span', { class: 'avico', html: icons[a.emoji] }) : (a.emoji || a.name[0]?.toUpperCase())),
           h('div', { style: { flex: 1, minWidth: 0 } },
             h('b', {}, a.name, a.system ? h('span', { class: 'badge', style: { marginLeft: '8px', color: 'var(--lime)', borderColor: 'color-mix(in srgb, var(--lime) 40%, transparent)' } }, 'PLATFORM AI') : null),
             h('small', { class: 'muted', style: { display: 'block' } }, a.role),
@@ -235,10 +235,10 @@ routes['/agents'] = {
       const know = h('textarea', { class: 'ta', style: { minHeight: '80px' }, placeholder: 'Knowledge base, one fact per line:\nHours are 9am-6pm WAT\nPricing starts at $25/month\nWe support voice cloning and dubbing' });
       const greet = h('input', { class: 'input', placeholder: 'Greeting — e.g. Hi! Amara here, how can I help?' });
       const vSel = { id: state.defaultVoiceId };
-      const AVATARS = ['🎙️', '🦸', '🧑‍💼', '🎧', '🤖', '🌟', '🎬', '🗣️'];
+      const AVATARS = ['micStudio', 'bot', 'user', 'star', 'film', 'wave', 'phone', 'wand'];
       const pick = { emoji: AVATARS[db.agents.length % AVATARS.length], traits: new Set() };
       const avRow = h('div', { class: 'pills' });
-      const drawAv = () => avRow.replaceChildren(...AVATARS.map(e => h('button', { class: 'chip' + (pick.emoji === e ? ' on' : ''), style: { fontSize: '17px' }, onclick: () => { pick.emoji = e; drawAv(); } }, e)));
+      const drawAv = () => avRow.replaceChildren(...AVATARS.map(e => h('button', { class: 'chip avchip' + (pick.emoji === e ? ' on' : ''), 'aria-label': e, onclick: () => { pick.emoji = e; drawAv(); } }, icon(e))));
       drawAv();
       const TRAITS = [['warm', 'Warm'], ['playful', 'Playful'], ['concise', 'Concise'], ['formal', 'Formal'], ['witty', 'Witty'], ['calm', 'Calm'], ['hype', 'High-energy'], ['empathetic', 'Empathetic']];
       const trRow = h('div', { class: 'pills' });
@@ -346,7 +346,7 @@ routes['/call/:id'] = {
       h('div', { style: { display: 'flex', justifyContent: 'space-between' } },
         h('button', { class: 'iconbtn', html: icons.close, onclick: () => navigate('/agents') }),
         h('span', { class: 'badge' }, 'REACHMARK CALL')),
-      h('div', { class: 'ringwrap' }, h('span', { class: 'halo' }), h('span', { class: 'halo' }), h('span', { class: 'avatar ' + (a.av || ''), style: { fontSize: '34px' } }, a.emoji || a.name[0])),
+      h('div', { class: 'ringwrap' }, h('span', { class: 'halo' }), h('span', { class: 'halo' }), h('span', { class: 'avatar ' + (a.av || ''), style: { fontSize: '34px' } }, icons[a.emoji] ? h('span', { class: 'avico big', html: icons[a.emoji] }) : (a.emoji || a.name[0]))),
       h('div', { class: 'callname' }, a.name), stat, log,
       h('div', { class: 'callbar' }, micBtn, endBtn, spkBtn));
     node.append(stage);

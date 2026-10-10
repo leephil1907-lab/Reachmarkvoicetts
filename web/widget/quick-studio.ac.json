@@ -1,0 +1,52 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "accent",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "Reachmark Audio",
+          "weight": "Bolder",
+          "size": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Quick Studio · by Reachmark Digital",
+          "isSubtle": true,
+          "size": "Small",
+          "spacing": "None"
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "text": "${status}",
+      "wrap": true,
+      "size": "Small"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        { "title": "Studios", "value": "6" },
+        { "title": "Languages", "value": "40+" },
+        { "title": "Signup credits", "value": "10,000" }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open the studio",
+      "url": "/#/studio/tts"
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "Voice Match",
+      "url": "/#/studio/clone"
+    }
+  ]
+}
