@@ -88,8 +88,16 @@ routes['/home'] = {
       h('div', { class: 'stat' }, h('span', { class: 's-ico vio' }, icon('wave')), h('b', {}, String(db.history.length)), h('small', {}, 'renders')),
       h('div', { class: 'stat' }, h('span', { class: 's-ico cyan' }, icon('clock')), h('b', {}, (db.user?.minutes || 0).toFixed(1)), h('small', {}, 'studio minutes')));
     const quick = h('div', { class: 'qgrid', 'data-stag': '' },
-      [['/studio/tts', 'text', 'Text to Speech'], ['/studio/clone', 'copy', 'Voice Match'], ['/studio/changer', 'swap', 'Voice Changer'], ['/studio/dub', 'globe', 'Dubbing'], ['/studio/lip', 'film', 'Lip Sync'], ['/studio/design', 'wand', 'Voice Design']]
-        .map(([path, ic, label]) => h('button', { class: 'qcard', onclick: () => navigate(path) }, icon(ic), h('span', {}, label))));
+      [['/studio/tts', 'text', 'Text to Speech', 'Type it — hear it in any voice, any language'],
+       ['/studio/clone', 'copy', 'Voice Match', 'Clone a voice from 10 seconds of audio'],
+       ['/studio/changer', 'swap', 'Voice Changer', 'Pitch, timbre and FX chains on any recording'],
+       ['/studio/dub', 'globe', 'Dubbing Studio', 'Translate and re-voice video with downloads'],
+       ['/studio/lip', 'film', 'Lip Sync', 'Match speech to footage, export WebM'],
+       ['/studio/design', 'wand', 'Voice Design', 'Design a new voice from plain traits']]
+        .map(([path, ic, label, desc]) => h('button', { class: 'qcard', onclick: () => navigate(path) },
+          h('span', { class: 'qi' }, icon(ic)),
+          h('span', { class: 'qt' }, h('b', {}, label), h('small', {}, desc)),
+          h('span', { class: 'qa', html: icons.chevron }))));
     const hs = h('div', { class: 'hscroll', 'data-stag': '' }, skel({ width: '112px', height: '132px' }), skel({ width: '112px', height: '132px' }));
     (async () => {
       const vs = await myVoices(true);
@@ -138,10 +146,19 @@ routes['/home'] = {
     };
     tabs.forEach(t => pills.append(h('button', { class: 'chip' + (t === cur ? ' on' : ''), onclick: e => { cur = t; [...pills.children].forEach(c => c.classList.remove('on')); e.target.classList.add('on'); renderList(); } }, labels[t])));
     setTimeout(renderList, 250);
+    const planLabel = db.user?.plan === 'plus' ? 'Plus plan' : 'Free plan';
     node.append(h('div', { 'data-stag': '' },
-      h('div', { class: 'hello' }, h('h2', {}, greet + ', ' + first + ' 👋'), h('p', { class: 'muted tiny' }, new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + ' · ' + (db.user?.plan === 'plus' ? 'Plus plan' : 'Free plan'))),
+      h('div', { class: 'dash-head' },
+        h('img', { class: 'dash-logo', src: '/assets/logo-192.png', alt: 'Reachmark Audio' }),
+        h('div', { class: 'dh-txt' },
+          h('h2', {}, greet + ', ' + first),
+          h('p', { class: 'muted tiny' }, new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })),
+          h('div', { class: 'dh-tags' },
+            h('span', { class: 'tag lime' }, planLabel),
+            h('span', { class: 'tag' }, 'Reachmark Digital'))),
+        h('button', { class: 'btn primary', onclick: () => navigate('/studio/tts') }, icon('spark'), 'New render')),
       stats,
-      h('div', { class: 'sect' }, 'Create'), quick,
+      h('div', { class: 'sect' }, 'Studios'), quick,
       h('div', { class: 'sect' }, 'My voices'), hs,
       h('div', { class: 'sect' }, 'History'), pills, list));
   },
@@ -167,6 +184,8 @@ routes['/studio/tts'] = {
     const count = h('span', { class: 'tiny faint' }, '');
     const upd = () => count.textContent = ta.value.length + ' / 2000';
     ta.addEventListener('input', upd); upd();
+    const sharedText = sessionStorage.getItem('rm_share_text');
+    if (sharedText) { ta.value = sharedText.slice(0, 2000); sessionStorage.removeItem('rm_share_text'); upd(); toast('Shared text loaded into the editor', 'text'); }
     const out = h('div', { class: 'stack' });
     const gen = h('button', { class: 'btn primary block', onclick: async () => {
       if (!ta.value.trim()) return toast('Type something first', 'edit');
@@ -263,6 +282,10 @@ routes['/studio/changer'] = {
       h('label', { class: 'fld' }, 'Character presets'), presetRow,
       h('label', { class: 'fld' }, 'Fine pitch ', sliderLab), slider,
       exprControls(sel), outBox), dock);
+    if (window.__rmLaunchFile) {
+      const f = window.__rmLaunchFile; window.__rmLaunchFile = null;
+      setSource(f, f.name).catch(e => toast(e.message || 'Could not read that file', 'close'));
+    }
   },
 };
 

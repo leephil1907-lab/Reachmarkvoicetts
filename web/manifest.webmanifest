@@ -25,6 +25,21 @@
     { "name": "Voice Match", "short_name": "Match", "description": "Match a neural voice to you from 10 seconds of audio", "url": "/#/studio/clone", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] },
     { "name": "Support Center", "short_name": "Support", "description": "Live chat and support sessions", "url": "/#/support", "icons": [{ "src": "/assets/icon-96.png", "sizes": "96x96" }] }
   ],
-  "screenshots": [],
+  "screenshots": [
+    { "src": "/assets/screenshot-desktop.png", "sizes": "1280x800", "type": "image/png", "form_factor": "wide", "label": "Reachmark Audio dashboard on desktop" },
+    { "src": "/assets/screenshot-mobile.png", "sizes": "750x1334", "type": "image/png", "form_factor": "narrow", "label": "Reachmark Audio studio list on mobile" }
+  ],
+  "share_target": {
+    "action": "/?share=1",
+    "method": "GET",
+    "params": { "title": "rm_title", "text": "rm_text" }
+  },
+  "file_handlers": [
+    {
+      "action": "/#/studio/changer",
+      "accept": { "audio/*": [".wav", ".mp3", ".ogg", ".m4a", ".flac"] }
+    }
+  ],
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
   "prefer_related_applications": false
 }

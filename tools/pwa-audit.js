@@ -30,6 +30,15 @@ for (const i of m.icons) {
   check(exists && dim === i.sizes, 'icon file matches declared size', i.src + ' ' + dim);
 }
 check(Array.isArray(m.shortcuts) && m.shortcuts.length >= 2, 'shortcuts', (m.shortcuts || []).length + ' entries');
+const shots = m.screenshots || [];
+check(shots.length >= 2 && shots.some(x => x.form_factor === 'wide') && shots.some(x => x.form_factor === 'narrow'), 'store screenshots (wide + narrow)', shots.length + ' entries');
+for (const s of shots) check(fs.existsSync(path.join(WEB, s.src)), 'screenshot file exists', s.src);
+check(!!m.share_target && !!m.share_target.action && !!(m.share_target.params || {}).text, 'share_target declared', m.share_target && m.share_target.action);
+check(Array.isArray(m.file_handlers) && m.file_handlers.length >= 1 && !!m.file_handlers[0].accept, 'file_handlers declared', (m.file_handlers || []).length + ' handler');
+check(!!m.launch_handler, 'launch_handler declared', JSON.stringify(m.launch_handler));
+const mainSrc = fs.readFileSync(path.join(WEB, 'js', 'main.js'), 'utf8');
+check(mainSrc.includes('launchQueue.setConsumer'), 'launchQueue consumer wired in boot');
+check(mainSrc.includes("q.get('share')"), 'share-param boot handler wired');
 
 console.log('SERVICE WORKER');
 const sw = fs.readFileSync(path.join(WEB, 'sw.js'), 'utf8');

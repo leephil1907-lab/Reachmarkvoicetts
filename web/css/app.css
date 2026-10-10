@@ -451,3 +451,37 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2)}
 
 /* avatar menu button */
 .avatarbtn{background:transparent!important;border:none!important}
+
+/* ---------- Reachmark brand imagery (official logo) ---------- */
+.brand .logo.logo-img,#splash .logo.logo-img,.auth-hero .logo-lg.logo-img{background:none;box-shadow:none;padding:0}
+.brand .logo.logo-img img,#splash .logo.logo-img img{width:100%;height:100%;object-fit:contain;border-radius:24%;display:block}
+.brand .logo.logo-img{box-shadow:0 4px 14px rgba(0,0,0,.35)}
+#splash .logo.logo-img{box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pop2 .7s var(--spring) both}
+.auth-hero .logo-lg{width:96px;height:96px;margin-bottom:18px}
+.auth-hero .logo-lg.logo-img img{width:100%;height:100%;object-fit:contain;border-radius:24%;display:block;box-shadow:0 16px 50px rgba(0,0,0,.45)}
+
+/* ---------- professional dashboard head ---------- */
+.dash-head{display:flex;align-items:center;gap:14px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--r-lg);background:linear-gradient(135deg,var(--card),var(--surface2));box-shadow:var(--sh-1);margin-bottom:16px;animation:riseIn .5s var(--ease) both}
+.dash-logo{width:56px;height:56px;border-radius:15px;flex:none;box-shadow:0 10px 26px rgba(0,0,0,.35)}
+.dh-txt{flex:1;min-width:0}
+.dh-txt h2{font-size:21px;letter-spacing:-.02em;line-height:1.15}
+.dh-txt p{margin-top:2px}
+.dh-tags{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.tag{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:3px 9px;border-radius:var(--r-pill);border:1px solid var(--line2);color:var(--muted)}
+.tag.lime{color:var(--lime-deep);border-color:color-mix(in srgb,var(--lime) 40%,transparent);background:color-mix(in srgb,var(--lime) 9%,transparent)}
+[data-theme="light"] .tag.lime{color:#5c7a12}
+@media (max-width:520px){.dash-head{padding:14px}.dash-logo{width:46px;height:46px;border-radius:12px}.dh-txt h2{font-size:18px}.dash-head .btn{display:none}}
+
+/* ---------- studio cards ---------- */
+.qgrid{grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:12px}
+.qcard{flex-direction:row;align-items:center;gap:12px;padding:15px 14px;font-weight:600}
+.qcard .qi{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:color-mix(in srgb,var(--lime) 11%,transparent);color:var(--lime-deep);flex:none;transition:transform .2s var(--spring)}
+[data-theme="light"] .qcard .qi{color:#5c7a12}
+.qcard .qi svg{width:18px;height:18px}
+.qcard .qt{flex:1;min-width:0;text-align:left}
+.qcard .qt b{display:block;font-size:13.5px;letter-spacing:-.01em}
+.qcard .qt small{display:block;color:var(--muted);font-size:11px;font-weight:500;margin-top:3px;line-height:1.4}
+.qcard .qa{color:var(--faint);flex:none;transition:transform .2s var(--spring),color .2s}
+.qcard .qa svg{width:15px;height:15px}
+.qcard:hover .qi{transform:scale(1.08)}
+.qcard:hover .qa{color:var(--lime-deep);transform:translateX(3px)}

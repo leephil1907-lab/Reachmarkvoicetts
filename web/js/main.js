@@ -7,9 +7,9 @@ import { welcomeSheet } from './auth.js';
 /* ---------- splash ---------- */
 const splash = h('div', { id: 'splash' },
   h('div', { class: 'sl' },
-    h('div', { class: 'logo' }, icon('micStudio')),
+    h('div', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: '' })),
     h('h1', {}, 'Reachmark Audio'),
-    h('p', {}, 'One engine · every voice'),
+    h('p', {}, 'The AI voice studio'),
     h('small', { style: { color: 'var(--faint)', fontSize: '11px', letterSpacing: '.12em', textTransform: 'uppercase' } }, 'by Reachmark Digital'),
     h('div', { class: 'bars' }, [0, 1, 2, 3, 4].map(() => h('i', { style: { height: '10px' } })))));
 document.body.append(splash);
@@ -23,8 +23,8 @@ const NAV = [
 ];
 const sb = document.querySelector('#sidebar');
 sb.append(h('div', { class: 'brand' },
-  h('span', { class: 'logo' }, icon('micStudio')),
-  h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'merged engine hub'))));
+  h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: 'Reachmark Audio' })),
+  h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))));
 for (const [label, items] of NAV) {
   sb.append(h('div', { class: 'navlabel' }, label));
   for (const [path, ic, name] of items) sb.append(h('button', { class: 'navitem', dataset: { path }, onclick: () => navigate(path) }, icon(ic), name));
@@ -129,3 +129,34 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   }
 })();
 document.querySelector('#view').addEventListener('scroll', () => { }, { passive: true });
+
+/* ---------- PWA share target + file handlers ---------- */
+try {
+  const q = new URLSearchParams(location.search);
+  if (q.get('share')) {
+    const t = [q.get('rm_title'), q.get('rm_text')].filter(Boolean).join(' — ').trim();
+    if (t) {
+      sessionStorage.setItem('rm_share_text', t.slice(0, 2000));
+      setTimeout(() => {
+        toast('Shared text received — ready in Text to Speech', 'text');
+        if (state.user) navigate('/studio/tts');
+      }, 900);
+    }
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
+} catch {}
+if ('launchQueue' in window) {
+  try {
+    window.launchQueue.setConsumer(async (params) => {
+      for (const hf of (params.files || [])) {
+        try {
+          const f = await hf.getFile();
+          if (!f) continue;
+          window.__rmLaunchFile = f;
+          navigate('/studio/changer');
+          toast('Audio file received — loaded into Voice Changer', 'swap');
+        } catch {}
+      }
+    });
+  } catch {}
+}

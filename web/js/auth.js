@@ -3,7 +3,7 @@ import { h, icon, icons, routes, navigate, toast, api, db, refreshAll, sheet, mo
 
 routes['/auth'] = {
   title: 'Welcome', public: true,
-  top: () => ({ noUser: true, left: h('div', { class: 'brand', style: { padding: '4px 0' } }, h('span', { class: 'logo' }, icon('micStudio')), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))) }),
+  top: () => ({ noUser: true, left: h('div', { class: 'brand', style: { padding: '4px 0' } }, h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: 'Reachmark Audio' })), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))) }),
   view: async ({ node }) => {
     let mode = 'login';
     const err = h('div', { class: 'auth-err', hidden: true });
@@ -59,11 +59,11 @@ routes['/auth'] = {
     node.style.paddingBottom = '40px';
     node.append(h('div', { class: 'authwrap', 'data-stag': '' },
       h('div', { class: 'auth-hero' },
-        h('div', { class: 'logo-lg' }, icon('micStudio')),
-        h('h1', {}, 'Your voice, every language, one platform.'),
-        h('p', { class: 'muted' }, 'Clone, design, dub, lip-sync and call with AI voices — powered by a merged engine hub of five world-class voice codebases.'),
+        h('div', { class: 'logo-lg logo-img' }, h('img', { src: '/assets/logo-192.png', alt: 'Reachmark Audio' })),
+        h('h1', {}, 'Studio-grade AI voice, for everyone.'),
+        h('p', { class: 'muted' }, 'Reachmark Audio is Reachmark Digital’s worldwide voice studio — neural text-to-speech, Voice Match cloning, dubbing, lip sync and character agents on one professional platform.'),
         h('div', { class: 'auth-feats' },
-          ['🧬 Voice matching from 10 seconds of audio', '🌍 Voice translation across 4+ languages', ' Lip sync with WebM video export', '🤖 Character agents that chat & call'].map(t => h('div', { class: 'auth-feat' }, t))),
+          ['Voice Match cloning from 10 seconds of audio', 'Neural TTS and voice translation in 40+ languages', 'Dubbing and lip sync with video export', 'Character agents that chat and call in their own voice'].map(t => h('div', { class: 'auth-feat' }, t))),
         h('div', { class: 'bars' }, [0, 1, 2, 3, 4, 5, 6].map((i) => h('i', { style: { height: 8 + (i % 4) * 6 + 'px', animationDelay: i * 0.1 + 's' } })))),
       h('div', { class: 'auth-card card' },
         tabs, form, forgot,
