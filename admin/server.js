@@ -24,6 +24,8 @@ const engines = require('../server/engines');
 const llm = require('../server/llm');
 const brainS = require('../server/brain');
 const mail = require('../server/mail');
+const tpl = require('../server/templates');
+const PUBLIC_URL = process.env.PUBLIC_URL || 'http://localhost:8000';
 
 const ADMIN_PORT = Number(process.env.ADMIN_PORT || 8001);
 const WEB = path.join(__dirname, 'web');
@@ -261,6 +263,7 @@ const server = http.createServer(async (req, res) => {
         // suspension gates every request with 403; killing sessions is the separate
         // "force logout" action (and admin sessions die automatically via role/suspend check)
         if (t.suspended) store.adminSessions.delUser(t.id);
+        mail.send({ to: t.email, ...(t.suspended ? tpl.suspended({ name: t.name, reason: str(b.reason, 200) || '', url: PUBLIC_URL }) : tpl.reinstated({ name: t.name, url: PUBLIC_URL })) }).catch(() => {});
         log('user.' + (t.suspended ? 'suspend' : 'unsuspend'), t.email, { reason: str(b.reason, 200) || '' });
         return json(res, 200, { ok: true, suspended: !!t.suspended });
       }
@@ -332,8 +335,8 @@ const server = http.createServer(async (req, res) => {
         const owner = store.users.byId(t.userId);
         const offline = !owner || !owner.last_seen || Date.now() - owner.last_seen > 2 * 60 * 1000;
         if (offline && owner && store.rateLimit('snotify:' + t.id, 1, 10 * 60 * 1000)) {
-          mail.send({ to: owner.email, subject: 'Reachmark support replied to you', text: `Hi ${owner.name},\n\nOur support team replied to your conversation:\n\n"${text.slice(0, 400)}"\n\nOpen Reachmark Audio → Support → Live chat to continue.\n\n— Reachmark Audio` });
-          mail.send({ to: SUPPORT_EMAIL, subject: `[offline reply] thread ${t.id}`, text: `Admin ${me.email} replied to an offline user (${owner.email}, plan ${owner.plan}).\nThread: ${t.id}\nMessage: ${text.slice(0, 400)}` });
+          mail.send({ to: owner.email, ...tpl.supportReply({ name: owner.name, excerpt: text.slice(0, 400), url: PUBLIC_URL }) });
+          mail.send({ to: SUPPORT_EMAIL, ...tpl.adminOfflineReply({ adminEmail: me.email, threadId: t.id, userEmail: owner.email, replyText: text.slice(0, 400) }) });
         }
         log('support.reply', t.id, { chars: text.length, offlineNotified: offline && !!owner });
         return json(res, 200, { ok: true, message: m, thread: store.support.thread(t.id) });

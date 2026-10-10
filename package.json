@@ -11,7 +11,10 @@
     "audit:pwa": "node tools/pwa-audit.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0"
+    "better-sqlite3": "^11.10.0",
+    "nodemailer": "^10.0.16"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

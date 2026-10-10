@@ -10,6 +10,7 @@ const splash = h('div', { id: 'splash' },
     h('div', { class: 'logo' }, icon('micStudio')),
     h('h1', {}, 'Reachmark Audio'),
     h('p', {}, 'One engine · every voice'),
+    h('small', { style: { color: 'var(--faint)', fontSize: '11px', letterSpacing: '.12em', textTransform: 'uppercase' } }, 'by Reachmark Digital'),
     h('div', { class: 'bars' }, [0, 1, 2, 3, 4].map(() => h('i', { style: { height: '10px' } })))));
 document.body.append(splash);
 
@@ -32,7 +33,7 @@ sb.append(h('div', { class: 'side-foot' },
   h('div', { class: 'card flat', style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '13px 15px' } },
     icon('spark'), h('div', { style: { flex: 1 } }, h('b', { class: 'credits-b', style: { fontSize: '15px' } }, '0'), h('small', { class: 'faint', style: { display: 'block' } }, 'credits')),
     h('button', { class: 'iconbtn', html: icons.logout, 'aria-label': 'Log out', onclick: () => logout() })),
-  h('div', { class: 'tiny faint', style: { padding: '10px 6px 0' } }, 'v1.1 · worldwide · support@reachmarkdigital.com')));
+  h('div', { class: 'tiny faint', style: { padding: '10px 6px 0' } }, 'v1.3 · a Reachmark Digital product · worldwide · support@reachmarkdigital.com')));
 
 /* ---------- tabbar ---------- */
 const tb = document.querySelector('#tabbar');

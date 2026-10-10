@@ -1,7 +1,7 @@
 # 🎙️ Reachmark Audio
 
 **One engine. Every voice. Every language.**
-Reachmark Audio is the completed, merged build of the *Reachmark Voice* project (`leephil1907-lab/Reachmarkvoicetts`) — a single product fusing five imported codebases into one runtime, shipped as a **responsive web app** (mobile + desktop browsers, installable PWA) and a **desktop application** (Electron shell in `desktop/`).
+Reachmark Audio is a product of **Reachmark Digital** — the completed, merged build of the *Reachmark Voice* project (`leephil1907-lab/Reachmarkvoicetts`) — a single product fusing five imported codebases into one runtime, shipped as a **responsive web app** (mobile + desktop browsers, installable PWA) and a **desktop application** (Electron shell in `desktop/`).
 
 Built for **worldwide use**: accounts, voice translation across languages, and support channels for every region.
 
@@ -78,6 +78,24 @@ npm run start:admin            # admin only · npm run start:web → public only
 
 At first admin login the gate shows a TOTP secret (scan/paste into any authenticator);
 2FA is mandatory from then on.
+
+### Transactional email (SMTP)
+
+Branded HTML templates (with the Reachmark Digital company footer) are sent for:
+**welcome/signup**, **password reset** (single-use 30-min link → `/#/reset/<token>`),
+**password-changed security notice**, **support reply while the user is offline**,
+**suspension / reinstatement notices** and **support-inbox notifications**.
+
+```bash
+SMTP_HOST=smtp.gmail.com SMTP_PORT=587 \
+SMTP_USER=reachmarkofficial@gmail.com SMTP_PASS='<gmail app password>' \
+MAIL_FROM='Reachmark Audio <reachmarkofficial@gmail.com>'   # optional
+```
+
+Any SMTP server works (SES, Postmark, Mailgun…) — port 465 switches to implicit TLS.
+Without SMTP config nothing is lost: messages append to `data/outbox.log`. Gmail note:
+use an **App Password** (2-step verification → app passwords); the From address is always
+rewritten to the authenticated account. The password lives in env only — never in git.
 
 ### Tests
 

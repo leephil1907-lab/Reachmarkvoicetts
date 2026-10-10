@@ -92,6 +92,33 @@ async function waitUp(url, tries = 60) {
     ok('signup credits from config (10000)', r.j?.user?.credits === 10000);
     const credits0 = r.j.user.credits;
 
+    /* ---------- transactional email (outbox fallback when SMTP unset) ---------- */
+    group('Transactional email templates (welcome / reset / notices)');
+    const outbox = () => { try { return fs.readFileSync(path.join(DATA, 'outbox.log'), 'utf8'); } catch { return ''; } };
+    await sleep(300);
+    ok('signup wrote branded welcome email', /Welcome to Reachmark Audio/.test(outbox()) && outbox().includes(email));
+    ok('welcome email carries the Reachmark Digital footer', /product of Reachmark Digital/.test(outbox()));
+    r = await pub('POST', '/api/auth/forgot', { email: 'ghost' + Date.now() + '@test.local' });
+    ok('forgot for unknown email → generic 200 (no enumeration)', r.status === 200 && /If that email has an account/.test(r.j.message));
+    r = await pub('POST', '/api/auth/forgot', { email });
+    ok('forgot for real email → 200', r.status === 200);
+    await sleep(400);
+    const rlink = /#\/reset\/([a-f0-9]{48})/.exec(outbox());
+    ok('reset email contains single-use link', !!rlink, rlink ? rlink[1].slice(0, 12) + '…' : 'no link found');
+    r = await pub('POST', '/api/auth/reset', { token: rlink ? rlink[1] : 'x', password: 'NewPass123!' });
+    ok('reset with valid token → 200', r.status === 200);
+    r = await pub('POST', '/api/auth/reset', { token: rlink ? rlink[1] : 'x', password: 'Another123!' });
+    ok('reset token is single-use → 400', r.status === 400);
+    r = await pub('POST', '/api/auth/login', { email, password: 'UserPass123!' });
+    ok('old password rejected after reset → 401', r.status === 401);
+    r = await pub('POST', '/api/auth/login', { email, password: 'NewPass123!' });
+    ok('new password works → fresh session', r.status === 200);
+    await sleep(300);
+    ok('password-changed security notice emailed', /password was changed/i.test(outbox()));
+    r = await pub('GET', '/terms');
+    const privR = await pub('GET', '/privacy');
+    ok('public /terms and /privacy routes served', r.status === 200 && privR.status === 200);
+
     /* ---------- 2. non-admin rejected by admin APIs ---------- */
     group('Non-admin vs admin APIs');
     r = await adm('GET', '/api/stats');
@@ -293,9 +320,13 @@ async function waitUp(url, tries = 60) {
     group('Suspension & force logout');
     r = await adm('POST', '/api/user/suspend', { id: uid, on: 1, reason: 'test' }, { 'X-CSRF-Token': csrf });
     ok('suspend → 200', r.status === 200);
+    await sleep(300);
+    ok('suspension notice emailed to the user', /account (is|has been) suspended/i.test(outbox()) && outbox().includes('Reason: test'));
     r = await pub('GET', '/api/voices');
     ok('suspended user → 403 on protected APIs', r.status === 403);
     await adm('POST', '/api/user/suspend', { id: uid, on: 0 }, { 'X-CSRF-Token': csrf });
+    await sleep(300);
+    ok('reinstatement notice emailed', /active again/i.test(outbox()));
     r = await pub('GET', '/api/voices');
     ok('unsuspended → access restored', r.status === 200);
     r = await adm('POST', '/api/user/logout', { id: uid }, { 'X-CSRF-Token': csrf });

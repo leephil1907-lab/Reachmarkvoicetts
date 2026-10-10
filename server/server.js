@@ -15,6 +15,10 @@ const store = require('./db');
 const llm = require('./llm');
 const brainS = require('./brain');
 const mail = require('./mail');
+const tpl = require('./templates');
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@reachmarkdigital.com';
+const ADMIN_URL = process.env.ADMIN_URL || 'http://localhost:8001';
+const originOf = req => (req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http') + '://' + (req.headers.host || 'localhost:' + (process.env.PORT || 8000));
 store.db.exec('CREATE TABLE IF NOT EXISTS typing (threadId TEXT PRIMARY KEY, side TEXT, at INTEGER)');
 
 const WEB = path.join(__dirname, '..', 'web');
@@ -214,6 +218,7 @@ const server = http.createServer(async (req, res) => {
       try { store.db.prepare('INSERT INTO ledger (uid,at,delta,kind) VALUES (?,?,?,?)').run(user.id, Date.now(), user.credits, 'signup'); } catch {}
       userSamplesDir(uid);
       store.agents.add(uid, guideAgent());
+      mail.send({ to: email, ...tpl.welcome({ name, email, credits: user.credits, url: originOf(req) }) }).catch(() => {});
       return json(res, 200, { user: pubUser(user), fresh: true }, { 'Set-Cookie': startSession(res, uid, secure) });
     }
     if (p === '/api/auth/login' && req.method === 'POST') {
@@ -229,6 +234,36 @@ const server = http.createServer(async (req, res) => {
       const c = cookieUser(req);
       if (c) store.sessions.del(c.token);
       return json(res, 200, { ok: true }, { 'Set-Cookie': 'rm=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' + (secure ? '; Secure' : '') });
+    }
+    /* ---- password reset by email (branded template, 30-min single-use token) ---- */
+    if (p === '/api/auth/forgot' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e5));
+      const email = str(b.email, 200)?.trim().toLowerCase() || '';
+      if (!store.rateLimit('forgot:' + clientIp(req) + ':' + email, 3, 15 * 60 * 1000)) return json(res, 429, { error: 'Too many reset requests. Try again in 15 minutes.' });
+      const u = email && store.users.byEmail(email);
+      if (u) {
+        const token = crypto.randomBytes(24).toString('hex');
+        store.db.prepare('INSERT OR REPLACE INTO password_resets (token,uid,exp,used) VALUES (?,?,?,0)').run(token, u.id, Date.now() + 30 * 60 * 1000);
+        mail.send({ to: u.email, ...tpl.passwordReset({ name: u.name, url: originOf(req), token }) }).catch(() => {});
+      }
+      return json(res, 200, { ok: true, message: 'If that email has an account, a reset link is on its way. It stays valid for 30 minutes.' });
+    }
+    if (p === '/api/auth/reset' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e5));
+      const token = str(b.token, 64) || '', pass = String(b.password || '');
+      if (!store.rateLimit('reset:' + clientIp(req), 10, 15 * 60 * 1000)) return json(res, 429, { error: 'Too many attempts. Try again later.' });
+      const row = store.db.prepare('SELECT * FROM password_resets WHERE token=?').get(token);
+      if (!row || row.used || row.exp < Date.now()) return json(res, 400, { error: 'This reset link is invalid or has expired.' });
+      if (pass.length < 8) return json(res, 400, { error: 'Password must be at least 8 characters.' });
+      const u = store.users.byId(row.uid);
+      if (!u) return json(res, 400, { error: 'This reset link is invalid or has expired.' });
+      const salt = crypto.randomBytes(16).toString('hex');
+      u.salt = salt; u.pass = await hashPass(pass, salt);
+      store.users.save(u);
+      store.db.prepare('UPDATE password_resets SET used=1 WHERE token=?').run(token);
+      store.sessions.delUser(u.id); // every other session dies with the old password
+      mail.send({ to: u.email, ...tpl.passwordChanged({ name: u.name }) }).catch(() => {});
+      return json(res, 200, { ok: true });
     }
     if (p === '/api/auth/me') {
       const c = cookieUser(req);
@@ -461,6 +496,7 @@ const server = http.createServer(async (req, res) => {
         if (t.status !== 'open') store.support.updateThread(t.id, { status: 'open' });
         const m = store.support.addMessage(t.id, 'bot', 'You are now connected to the Reachmark support team. They can see your plan and recent activity to help you faster.');
         store.support.updateThread(t.id, { lastMessageAt: m.createdAt, unreadByAdmin: (t.unreadByAdmin || 0) + 1 });
+        mail.send({ to: SUPPORT_EMAIL, ...tpl.adminThreadNotice({ adminEmail: SUPPORT_EMAIL, threadId: t.id, userEmail: user.email, preview: (t.subject || '').slice(0, 200), url: ADMIN_URL }) }).catch(() => {});
         return json(res, 200, { thread: store.support.thread(t.id), message: m });
       }
       if (p === '/api/support/message' && req.method === 'POST') {

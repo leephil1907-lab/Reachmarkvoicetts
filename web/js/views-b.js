@@ -407,6 +407,9 @@ routes['/support'] = {
       h('div', { class: 'row tap', onclick: () => navigate('/call/guide') }, h('div', { class: 'r-ico' }, icon('phone')), h('div', {}, h('b', {}, 'Support session'), h('small', {}, 'Voice call with the Guide agent')), h('div', { class: 'r-end' }, icon('chevron'))),
       h('div', { class: 'row tap', onclick: () => location.href = 'mailto:reachmarkofficial@gmail.com' }, h('div', { class: 'r-ico' }, icon('mail')), h('div', {}, h('b', {}, 'reachmarkofficial@gmail.com'), h('small', {}, 'General & account enquiries')), h('div', { class: 'r-end' }, icon('external'))),
       h('div', { class: 'row tap', onclick: () => location.href = 'mailto:support@reachmarkdigital.com' }, h('div', { class: 'r-ico' }, icon('mail')), h('div', {}, h('b', {}, 'support@reachmarkdigital.com'), h('small', {}, 'Technical support & billing')), h('div', { class: 'r-end' }, icon('external'))),
+      h('div', { class: 'sect' }, 'The fine print'),
+      h('div', { class: 'row tap', onclick: () => navigate('/terms') }, h('div', { class: 'r-ico' }, icon('doc')), h('div', {}, h('b', {}, 'Terms of Service'), h('small', {}, 'Plain-language terms · Reachmark Digital')), h('div', { class: 'r-end' }, icon('chevron'))),
+      h('div', { class: 'row tap', onclick: () => navigate('/privacy') }, h('div', { class: 'r-ico' }, icon('lock')), h('div', {}, h('b', {}, 'Privacy Policy'), h('small', {}, 'What we collect, where it lives, your controls')), h('div', { class: 'r-end' }, icon('chevron'))),
       h('div', { class: 'sect' }, 'Frequently asked'), faqBox));
   },
 };
@@ -511,6 +514,105 @@ routes['/support/chat'] = {
       h('div', { style: { position: 'sticky', bottom: '0', display: 'flex', gap: '8px', padding: '12px 0', background: 'color-mix(in srgb, var(--canvas) 88%, transparent)', backdropFilter: 'blur(10px)' } },
         inp, h('button', { class: 'iconbtn solid', html: icons.send, onclick: send }))));
   },
+};
+
+/* ================= LEGAL — Terms & Privacy (public) ================= */
+function legalView(title, updated, intro, sections) {
+  return async ({ node }) => {
+    const doc = h('div', { class: 'card', style: { maxWidth: '760px', margin: '0 auto', padding: '26px 24px', lineHeight: 1.65 } },
+      h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '6px' } },
+        h('span', { class: 'logo' }, icon('micStudio')),
+        h('div', {}, h('b', { style: { fontSize: '19px' } }, title), h('small', { class: 'muted', style: { display: 'block' } }, 'Reachmark Audio · a product of Reachmark Digital · updated ' + updated))),
+      h('p', { class: 'muted', style: { fontSize: '14px' } }, intro),
+      ...sections.map(([head, paras]) => h('div', { style: { marginTop: '18px' } },
+        h('b', { style: { fontSize: '15px' } }, head),
+        ...paras.map(t => h('p', { style: { fontSize: '13.8px', margin: '7px 0 0', color: 'var(--muted)' } }, t)))),
+      h('div', { class: 'tiny faint', style: { marginTop: '22px', borderTop: '1px solid var(--line)', paddingTop: '14px' } },
+        'Questions about this document? ', h('a', { class: 'maillink', href: 'mailto:support@reachmarkdigital.com' }, 'support@reachmarkdigital.com'), ' · ', h('a', { class: 'maillink', href: 'mailto:reachmarkofficial@gmail.com' }, 'reachmarkofficial@gmail.com'), h('br'), '© ' + new Date().getFullYear() + ' Reachmark Digital. Reachmark Audio is a product of Reachmark Digital.'));
+    node.append(h('div', { 'data-stag': '' }, doc));
+  };
+}
+routes['/terms'] = {
+  title: 'Terms of Service', public: true,
+  top: () => ({ back: true, title: 'Terms of Service', sub: 'Reachmark Audio · Reachmark Digital' }),
+  view: legalView('Terms of Service', 'October 2026',
+    'These terms govern your use of Reachmark Audio (the "Service"), a web and desktop application operated by Reachmark Digital ("we", "us"). By creating an account or using the Service you agree to these terms. Please read them — they are written in plain language on purpose.',
+    [
+      ['1. The Service', [
+        'Reachmark Audio provides neural text-to-speech, voice translation, Voice Match (pitch/pace matching of a neural voice to your sample), a voice changer, dubbing, lip sync tools and persona-driven character agents that chat and call using synthesized voice.',
+        'Features labelled "Voice Match" and "Quick Vocal Remove" are honest about their current engines: Voice Match tunes the nearest neural voice to your sample (true speaker-embedding cloning activates automatically if a GPU engine is attached), and Quick Vocal Remove is centre-channel reduction for stereo mixes. We do not charge for capabilities we cannot deliver.',
+      ]],
+      ['2. Accounts & credits', [
+        'You must provide a valid email address and keep your password confidential. New accounts receive 10,000 credits; credits are a licence to consume compute, not money, and are non-transferable and non-refundable to cash.',
+        'Charges are applied server-side before rendering and refunded automatically and in full if a render fails. Current costs are shown in-app (Support Center → FAQs and Site announcements).',
+        'The Plus plan includes one 7-day trial per account, enforced server-side. Trials convert to Free automatically at expiry — we never charge a card silently, because we do not hold cards.',
+      ]],
+      ['3. Acceptable use', [
+        'You may not: clone or synthesize a real person\'s voice without their consent; generate unlawful, defamatory, harassing or deceptive content; impersonate individuals or institutions; resell the Service; probe, overload or reverse-engineer the infrastructure; or use support channels for abuse.',
+        'You are responsible for the rights to any audio or text you upload. We may suspend or delete accounts that breach these terms — suspension is always notified by email with a human review path via support@reachmarkdigital.com.',
+      ]],
+      ['4. Your content', [
+        'You keep ownership of the text and audio you upload and of the renders you create. You grant us only the limited licence needed to process them (synthesize, store and serve them back to you).',
+        'Renders and voice samples are stored on our hosting provider\'s encrypted-at-rest volumes and are visible only to your account. Admin staff can access a specific sample or render only through a deliberate, click-confirmed action that is written to an audit log.',
+      ]],
+      ['5. Character agents & AI replies', [
+        'Agent replies are generated by AI (our on-device persona brain, or a connected language model where configured) and can be wrong. Agents are not licensed professionals; do not rely on them for legal, medical or financial advice.',
+        'Chat and call usage is metered in credits as shown in-app. The built-in Reachmark Guide (platform assistant) and human support conversations are free.',
+      ]],
+      ['6. Availability, maintenance & changes', [
+        'We run maintenance windows and may disable individual studios via site controls; the Service is provided "as is" and "as available" without warranties to the maximum extent permitted by law.',
+        'We may update these terms; material changes are announced in-app. Continued use after a change constitutes acceptance. If we ever discontinue the Service, we will give notice by email and export options where feasible.',
+      ]],
+      ['7. Liability', [
+        'To the maximum extent permitted by law, Reachmark Digital\'s total liability arising from the Service is limited to the credits purchased or granted to your account in the three (3) months preceding the claim. We are not liable for indirect or consequential losses.',
+      ]],
+      ['8. Governing law & contact', [
+        'These terms are governed by the laws of the Federal Republic of Nigeria, without prejudice to mandatory consumer protections in your country of residence. Disputes should first be raised in good faith with support@reachmarkdigital.com — a human responds to every message.',
+        'Reachmark Digital operates Reachmark Audio worldwide; general enquiries: reachmarkofficial@gmail.com.',
+      ]],
+    ]),
+};
+routes['/privacy'] = {
+  title: 'Privacy Policy', public: true,
+  top: () => ({ back: true, title: 'Privacy Policy', sub: 'Reachmark Audio · Reachmark Digital' }),
+  view: legalView('Privacy Policy', 'October 2026',
+    'Reachmark Audio is a product of Reachmark Digital. This policy explains what we collect, why, where it lives and the controls you have. Short version: we collect the minimum needed to run a voice studio, we do not sell data, and we do not run advertising or third-party analytics trackers.',
+    [
+      ['1. What we collect', [
+        'Account data: name, email address, a salted scrypt hash of your password (never the password itself), plan, credit balance, processed-audio minutes and signup/last-seen timestamps.',
+        'Content you create: uploaded audio samples, renders, voice profiles, character agents and studio history entries — stored under your account.',
+        'Support data: live-chat threads and messages with our team, including internal notes; conversation metadata (status, assignee, timestamps).',
+        'Operational data: session cookies, rate-limit counters, and — for staff actions only — an audit log (who did what, to which target, from which IP, when).',
+      ]],
+      ['2. What we do NOT collect', [
+        'No advertising identifiers, no third-party analytics or tracking pixels, no cross-site cookies, no payment card data (there are no card payments), no contacts, no location beyond the coarse IP used for rate limiting and abuse prevention.',
+      ]],
+      ['3. How we use it', [
+        'To operate the Service: authenticate you, meter credits, synthesize and store your audio, deliver support, secure the platform (rate limits, lockouts, suspension) and improve reliability.',
+        'Emails: we send transactional messages only — welcome, password reset, password-change notice, support replies while you are offline, and account-status notices. There is no marketing newsletter; if we ever add one it will be opt-in.',
+        'If a language-model provider is configured for character agents, the text of your agent messages (not your account data) is sent to that provider to produce the reply; with no provider configured, replies are generated on our own servers.',
+      ]],
+      ['4. Where data lives & who processes it', [
+        'Data is stored in a SQLite database and file volumes attached to our hosting provider (Render / Railway infrastructure, EU or your chosen region). Emails are delivered via our SMTP provider (Google Workspace/Gmail infrastructure) using an authenticated app password.',
+        'Staff access is role-based, requires two-factor authentication, and every access to user content (including listening to a sample) is click-confirmed and audit-logged.',
+      ]],
+      ['5. Retention & deletion', [
+        'Account data persists while your account exists. Deleting your account (via support request or an admin action you initiate) removes your profile, sessions, voices, agents, history, renders and support threads. Rate-limit and audit records are retained briefly for security compliance.',
+        'Password-reset links expire after 30 minutes and are single-use. Sessions expire and can be force-ended from Account.',
+      ]],
+      ['6. Your rights & controls', [
+        'Access, correction, export and erasure: email support@reachmarkdigital.com from your account address and a human will action it. You can also delete individual voices, agents and history entries in-app at any time.',
+        'Cookies: we use one essential HttpOnly session cookie (and a separate admin cookie for staff). Blocking it means you cannot stay signed in.',
+        'Children: the Service is intended for users aged 13+; accounts of younger children will be removed on notice.',
+      ]],
+      ['7. Security', [
+        'Passwords: async scrypt with per-user salts and constant-time comparison. Transport: HTTPS/TLS everywhere in deployment. Sessions: HttpOnly, SameSite cookies; admin sessions add SameSite=Strict, 8-hour expiry and mandatory TOTP two-factor authentication.',
+        'No system is perfectly secure; we notify affected users by email if a breach materially affects their data.',
+      ]],
+      ['8. Contact & changes', [
+        'Privacy questions and requests: support@reachmarkdigital.com (data protection) or reachmarkofficial@gmail.com (general). Material changes to this policy are announced in-app before they take effect.',
+      ]],
+    ]),
 };
 
 /* ================= ACCOUNT ================= */

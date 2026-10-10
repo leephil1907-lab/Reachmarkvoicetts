@@ -40,6 +40,15 @@ services:
         sync: false            # optional: comma-separated IPs/CIDR-ish list allowed to reach the admin app
       - key: SUPPORT_EMAIL
         value: support@reachmarkdigital.com
+      # ---- transactional email (SMTP) — set in the dashboard, never in git ----
+      - key: SMTP_HOST
+        sync: false            # e.g. smtp.gmail.com
+      - key: SMTP_PORT
+        sync: false            # 587 (STARTTLS) or 465 (TLS)
+      - key: SMTP_USER
+        sync: false            # e.g. reachmarkofficial@gmail.com
+      - key: SMTP_PASS
+        sync: false            # Gmail APP password (16 chars, no spaces)
       # ---- character agents: any OpenAI-compatible provider ----
       - key: LLM_API_KEY
         sync: false            # without it, agents fall back to the local persona brain

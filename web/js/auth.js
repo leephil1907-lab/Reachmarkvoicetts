@@ -3,7 +3,7 @@ import { h, icon, icons, routes, navigate, toast, api, db, refreshAll, sheet, mo
 
 routes['/auth'] = {
   title: 'Welcome', public: true,
-  top: () => ({ noUser: true, left: h('div', { class: 'brand', style: { padding: '4px 0' } }, h('span', { class: 'logo' }, icon('micStudio')), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'one engine · every voice'))) }),
+  top: () => ({ noUser: true, left: h('div', { class: 'brand', style: { padding: '4px 0' } }, h('span', { class: 'logo' }, icon('micStudio')), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))) }),
   view: async ({ node }) => {
     let mode = 'login';
     const err = h('div', { class: 'auth-err', hidden: true });
@@ -44,6 +44,18 @@ routes['/auth'] = {
       submit.replaceChildren(icon(mode === 'signup' ? 'plus' : 'spark'), mode === 'signup' ? 'Create account · get 10,000 ✦' : 'Log in'); submit.disabled = false;
     } }, nameF, emailF, passF, err, submit);
     setMode('login');
+    const forgot = h('button', { class: 'maillink tiny', style: { background: 'none', border: '0', cursor: 'pointer', color: 'var(--faint)', padding: '0', marginTop: '10px', textDecoration: 'underline' }, onclick: () => {
+      const em = h('input', { class: 'input', type: 'email', placeholder: 'Your account email', value: emailF.value });
+      const msg = h('p', { class: 'tiny muted', style: { marginTop: '10px' } }, 'We will email you a single-use link, valid for 30 minutes.');
+      sheet('Reset your password', (box, close) => {
+        box.append(h('label', { class: 'fld' }, 'Email'), em, msg,
+          h('button', { class: 'btn primary block', style: { marginTop: '14px' }, onclick: async e => {
+            e.currentTarget.disabled = true;
+            try { const r = await api('/api/auth/forgot', { method: 'POST', body: { email: em.value } }); msg.textContent = r.message; toast('Reset link sent', 'mail'); close(); }
+            catch (e2) { msg.textContent = e2.message; e.currentTarget.disabled = false; }
+          } }, icon('mail'), 'Email me a reset link'));
+      });
+    } }, 'Forgot password?');
     node.style.paddingBottom = '40px';
     node.append(h('div', { class: 'authwrap', 'data-stag': '' },
       h('div', { class: 'auth-hero' },
@@ -54,10 +66,12 @@ routes['/auth'] = {
           ['🧬 Voice matching from 10 seconds of audio', '🌍 Voice translation across 4+ languages', ' Lip sync with WebM video export', '🤖 Character agents that chat & call'].map(t => h('div', { class: 'auth-feat' }, t))),
         h('div', { class: 'bars' }, [0, 1, 2, 3, 4, 5, 6].map((i) => h('i', { style: { height: 8 + (i % 4) * 6 + 'px', animationDelay: i * 0.1 + 's' } })))),
       h('div', { class: 'auth-card card' },
-        tabs, form,
+        tabs, form, forgot,
         h('div', { class: 'center tiny faint', style: { marginTop: '14px' } },
           'Need help? ', h('a', { href: 'mailto:support@reachmarkdigital.com', class: 'maillink' }, 'support@reachmarkdigital.com'), h('br'),
-          h('a', { href: 'mailto:reachmarkofficial@gmail.com', class: 'maillink' }, 'reachmarkofficial@gmail.com')))));
+          h('a', { href: 'mailto:reachmarkofficial@gmail.com', class: 'maillink' }, 'reachmarkofficial@gmail.com'))),
+        h('div', { class: 'center tiny faint', style: { marginTop: '10px' } },
+          'By continuing you agree to our ', h('a', { class: 'maillink', onclick: () => navigate('/terms') }, 'Terms'), ' & ', h('a', { class: 'maillink', onclick: () => navigate('/privacy') }, 'Privacy Policy'), '.', h('br'), 'Reachmark Audio is a product of Reachmark Digital.')));
   },
 };
 

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS support_messages (
 CREATE TABLE IF NOT EXISTS site_config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT NOT NULL, at INTEGER NOT NULL, delta INTEGER NOT NULL, kind TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_ledger_at ON ledger(at);
+CREATE TABLE IF NOT EXISTS password_resets (token TEXT PRIMARY KEY, uid TEXT NOT NULL, exp INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_voices_uid ON voices(uid);
 CREATE INDEX IF NOT EXISTS idx_agents_uid ON agents(uid);
 CREATE INDEX IF NOT EXISTS idx_history_uid ON history(uid, at);
@@ -61,7 +62,7 @@ const qUserById = db.prepare('SELECT * FROM users WHERE id = ?');
 const qUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
 const qUserInsert = db.prepare(`INSERT INTO users (id,name,email,salt,pass,credits,plan,minutes,trial_used,trial_ends,created,role,suspended,last_seen,totp_secret,totp_enabled)
   VALUES (@id,@name,@email,@salt,@pass,@credits,@plan,@minutes,@trial_used,@trial_ends,@created,@role,@suspended,@last_seen,@totp_secret,@totp_enabled)`);
-const qUserSave = db.prepare(`UPDATE users SET name=@name, email=@email, credits=@credits, plan=@plan, minutes=@minutes,
+const qUserSave = db.prepare(`UPDATE users SET name=@name, email=@email, salt=@salt, pass=@pass, credits=@credits, plan=@plan, minutes=@minutes,
   trial_used=@trial_used, trial_ends=@trial_ends, role=@role, suspended=@suspended, last_seen=@last_seen,
   totp_secret=@totp_secret, totp_enabled=@totp_enabled WHERE id=@id`);
 const users = {
