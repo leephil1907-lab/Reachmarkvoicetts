@@ -1,7 +1,7 @@
 /* Reachmark Audio — service worker
    PWABuilder checklist: registered at root scope, precached app shell, fetch handler with
    offline navigation fallback, cache-first static assets, network-only for API/auth. */
-const VERSION = 'reachmark-audio-v1.7.0';
+const VERSION = 'reachmark-audio-v1.8.0';
 const SHELL = [
   '/', '/index.html', '/css/app.css', '/manifest.webmanifest',
   '/js/main.js', '/js/core.js', '/js/audio.js', '/js/brain.js', '/js/auth.js', '/js/views-a.js', '/js/views-b.js',
@@ -60,4 +60,65 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => caches.match('/assets/icon.png')))
   );
+});
+
+/* ---------- push notifications (Reachmark announcements) ---------- */
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch {}
+  e.waitUntil(self.registration.showNotification(data.title || 'Reachmark Audio', {
+    body: data.body || 'New from Reachmark Digital',
+    icon: '/assets/icon-192.png',
+    badge: '/assets/icon-96.png',
+    data: { url: data.url || '/' },
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) { try { c.navigate(url); } catch {} return c.focus(); } }
+    return clients.openWindow(url);
+  }));
+});
+
+/* ---------- background sync: replay queued support messages ---------- */
+function outboxDb() {
+  return new Promise((resolve, reject) => {
+    const rq = indexedDB.open('rm-outbox', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('msgs', { keyPath: 'id' });
+    rq.onsuccess = () => resolve(rq.result);
+    rq.onerror = () => reject(rq.error);
+  });
+}
+self.addEventListener('sync', e => {
+  if (e.tag !== 'rm-support-retry') return;
+  e.waitUntil((async () => {
+    const dbo = await outboxDb();
+    const items = await new Promise(res => {
+      const tx = dbo.transaction('msgs'); const rq = tx.objectStore('msgs').getAll();
+      rq.onsuccess = () => res(rq.result || []); rq.onerror = () => res([]);
+    });
+    let failed = 0;
+    for (const it of items) {
+      try {
+        const r = await fetch('/api/support/message', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: it.text }) });
+        if (r.ok) {
+          const tx = dbo.transaction('msgs', 'readwrite'); tx.objectStore('msgs').delete(it.id);
+          await new Promise(res => { tx.oncomplete = res; tx.onerror = res; });
+        } else failed++;
+      } catch { failed++; }
+    }
+    if (failed) throw new Error('backoff: retry on next sync');
+  })());
+});
+
+/* ---------- periodic sync: keep the public voice catalog fresh for offline ---------- */
+self.addEventListener('periodicsync', e => {
+  if (e.tag !== 'rm-catalog') return;
+  e.waitUntil(caches.open('rm-data').then(async c => {
+    for (const u of ['/api/catalog', '/api/health']) {
+      try { const r = await fetch(u); if (r && r.ok) await c.put(u, r.clone()); } catch {}
+    }
+  }));
 });

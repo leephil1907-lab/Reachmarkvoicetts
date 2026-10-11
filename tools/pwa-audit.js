@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const WEB = path.join(__dirname, '..', 'web');
+const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const check = (ok, label, detail = '') => { ok ? pass++ : fail++; console.log((ok ? '  ✅ ' : '  ❌ ') + label + (detail ? ' — ' + detail : '')); };
 
@@ -59,6 +60,16 @@ check(!/src="http:|href="http:/.test(html), 'no mixed content in shell');
 check(html.includes('fonts.googleapis.com/css2'), 'Google Fonts stylesheet linked');
 check(html.includes('rel="preconnect" href="https://fonts.gstatic.com"'), 'font preconnects declared');
 check(sw.includes('fonts.gstatic.com'), 'SW runtime-caches Google Fonts for offline');
+check(sw.includes("addEventListener('push'"), 'SW push handler (notifications)');
+check(sw.includes('notificationclick'), 'SW notificationclick opens app');
+check(sw.includes("addEventListener('periodicsync'") && main.includes('periodicSync.register'), 'periodic sync registered + handled (catalog refresh)');
+const coreSrc = fs.readFileSync(path.join(WEB, 'js', 'core.js'), 'utf8');
+const viewsBSrc = fs.readFileSync(path.join(WEB, 'js', 'views-b.js'), 'utf8');
+const pubServer = fs.readFileSync(path.join(ROOT, 'server', 'server.js'), 'utf8');
+const admServer = fs.readFileSync(path.join(ROOT, 'admin', 'server.js'), 'utf8');
+check(sw.includes("'rm-support-retry'") && coreSrc.includes('export function queueSupport') && viewsBSrc.includes('queueSupport('), 'background sync replays queued support messages');
+check(pubServer.includes('/api/push/subscribe') && admServer.includes('/api/push/send'), 'push subscribe (app) + send (admin) endpoints');
+check(viewsBSrc.includes('pushManager.subscribe'), 'in-app push permission + subscribe flow');
 console.log('  ℹ️  HTTPS: served over TLS in deployment (preview proxy + your domain)');
 
 

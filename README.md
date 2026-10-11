@@ -239,3 +239,29 @@ reachmark-audio/
 ---
 
 *Reachmark Digital · worldwide · merged build v1.3*
+
+## PWA capabilities & store readiness
+
+Reachmark Audio is installable and app-like: standalone display, splash, bottom tab bar,
+safe-area aware chrome, Google Fonts (Inter UI / Sora display, cache-first in the service
+worker for offline typography), and a full manifest: maskable + any icons, per-section
+shortcut icons, wide + narrow store screenshots, `share_target`, `file_handlers`
+(audio → Voice Changer via `launchQueue`), `protocol_handlers` (`web+reachmark:` →
+Text to Speech), `note_taking` (voice-note mode), `edge_side_panel`,
+`window-controls-overlay` + `tabbed` display overrides, `tab_strip`, `launch_handler`
+and a real Edge/Windows widget (`/widget.html` + `/widget/quick-studio.ac.json`).
+
+Service worker (v1.8.0): shell precache + offline navigation fallback, Google Fonts
+runtime cache, **push notifications** (VAPID keys auto-generated in `DATA_DIR/vapid.json`
+or `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` env; users opt in under Account → Push
+notifications; admins send from Site control, every send audited), **background sync**
+(offline support messages queue in IndexedDB and replay on `sync`), and **periodic sync**
+(daily refresh of the public voice catalog for offline browsing).
+
+`tools/pwa-audit.js` mirrors all 46 PWABuilder manifest capabilities locally:
+**43/46 pass**. The three outstanding items each assert an external real-world artifact
+and are deliberately not fabricated:
+
+1. `related_applications` — needs a real native/store listing (add its Play/Store id once packaged).
+2. `iarc_rating_id` — a content-rating certificate issued during store onboarding (add the id when issued).
+3. `scope_extensions` — needs a second origin you control plus its well-known verification file.

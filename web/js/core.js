@@ -299,6 +299,24 @@ export function verifySheet() {
     setTimeout(() => codeIn.focus(), 80);
   });
 }
+export function queueSupport(text) {
+  return new Promise((resolve, reject) => {
+    const rq = indexedDB.open('rm-outbox', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('msgs', { keyPath: 'id' });
+    rq.onsuccess = () => {
+      const dbo = rq.result;
+      const tx = dbo.transaction('msgs', 'readwrite');
+      tx.objectStore('msgs').put({ id: 'q' + Date.now() + Math.random().toString(36).slice(2, 6), text: String(text).slice(0, 2000), at: Date.now() });
+      tx.oncomplete = async () => {
+        dbo.close();
+        try { const reg = await navigator.serviceWorker.ready; await reg.sync.register('rm-support-retry'); } catch {}
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+    };
+    rq.onerror = () => reject(rq.error);
+  });
+}
 export function refreshVerifyBanner() {
   const main = document.querySelector('#main'); if (!main) return;
   let b = document.getElementById('verify-banner');

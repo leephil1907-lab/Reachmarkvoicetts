@@ -15,6 +15,7 @@ const store = require('./db');
 const llm = require('./llm');
 const brainS = require('./brain');
 const mail = require('./mail');
+const pushlib = require('./pushlib');
 const tpl = require('./templates');
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@reachmarkdigital.com';
 const ADMIN_URL = process.env.ADMIN_URL || 'http://localhost:8001';
@@ -202,6 +203,7 @@ const server = http.createServer(async (req, res) => {
   try {
     /* ---- public ---- */
     if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), time: Date.now() });
+    if (p === '/api/catalog') return json(res, 200, { models: tts.catalog() }); // public, cacheable by SW periodic sync
     if (p === '/api/config') return json(res, 200, {
       announcement: store.config.get('announcement'),
       maintenance: store.config.get('maintenance') === '1',
@@ -347,6 +349,20 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { user: pubUser(user) });
     }
     if (p === '/api/models') return json(res, 200, { models: tts.catalog() });
+    if (p === '/api/push/vapid') return json(res, 200, { publicKey: pushlib.publicKey() });
+    if (p === '/api/push/state') return json(res, 200, { count: store.pushSubs.forUser(uid).length });
+    if (p === '/api/push/subscribe' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e5));
+      const ep = String(b.endpoint || '').slice(0, 600);
+      if (!/^https?:\/\//.test(ep) || !b.keys || !b.keys.p256dh) return json(res, 400, { error: 'Invalid push subscription.' });
+      store.pushSubs.add(ep, uid, { p256dh: String(b.keys.p256dh).slice(0, 300), auth: String(b.keys.auth).slice(0, 100) });
+      return json(res, 200, { ok: true });
+    }
+    if (p === '/api/push/unsubscribe' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e5));
+      store.pushSubs.del(String(b.endpoint || '').slice(0, 600));
+      return json(res, 200, { ok: true });
+    }
     if (p === '/api/engines') return json(res, 200, { engines: await engines.status() });
 
     if (p === '/api/voices' && req.method === 'GET') return json(res, 200, { voices: store.voices.list(uid) });

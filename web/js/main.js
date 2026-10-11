@@ -104,7 +104,7 @@ addEventListener('keydown', e => {
 
 /* ---------- boot ---------- */
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').then(reg => { if (reg.periodicSync) reg.periodicSync.register('rm-catalog', { minInterval: 24 * 3600 }).catch(() => {}); return reg; }).catch(() => {}));
 }
 (async () => {
   applyTheme();

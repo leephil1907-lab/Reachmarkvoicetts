@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const { URL } = require('url');
 const { promisify } = require('util');
 const store = require('../server/db');
+const pushlib = require('../server/pushlib');
 const totp = require('../server/totp');
 const tts = require('../server/tts');
 const dsp = require('../server/dsp');
@@ -398,6 +399,12 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/config' && req.method === 'GET') {
         if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
         return json(res, 200, { config: store.config.all(), costs: store.config.costs(), flags: store.config.flags() });
+      }
+      if (p === '/api/push/send' && req.method === 'POST') {
+        const b = await body();
+        const r = await pushlib.sendAll(String(b.title || 'Reachmark Audio').slice(0, 80), String(b.body || '').slice(0, 240), String(b.url || '/').slice(0, 300));
+        store.audit(me.email, 'admin.push.send', me.id, ip, r);
+        return json(res, 200, r);
       }
       if (p === '/api/config' && req.method === 'POST') {
         if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });

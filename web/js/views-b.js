@@ -1,5 +1,5 @@
 // Reachmark Audio — explore views: discover, dubbing, lip sync, agents, calls, account, support, engines.
-import { h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn, fileTooBig, routeCleanup, verifySheet } from './core.js';
+import { queueSupport, h, icon, icons, state, save, navigate, toast, sheet, modal, pushHistory, playerNode, emptyState, fmtTime, fmtDate, download, routes, creditsPill, applyTheme, db, api, addAgent, deleteAgent, refreshAgents, syncUser, skelRows, dropdown, userMenuBtn, fileTooBig, routeCleanup, verifySheet } from './core.js';
 import { Player, serverTTS, browserSpeak, pickFile, LipRenderer, AC } from './audio.js';
 import { myVoices, models, voicePicker, playerRow, exprControls, LANGS, langPicker } from './views-a.js';
 
@@ -463,7 +463,14 @@ routes['/support/chat'] = {
       try {
         const j = await api('/api/support/message', { method: 'POST', body: { text: t } });
         thread = j.thread; setMode();
-      } catch (e) { bub('sys', e.message); }
+      } catch (e) {
+        if (!navigator.onLine || /fetch|network/i.test(e.message || '')) {
+          try { await queueSupport(t); bub('sys', 'You are offline — message queued and will send automatically when you reconnect.'); }
+          catch { bub('sys', e.message); }
+          return;
+        }
+        bub('sys', e.message);
+      }
     };
     const sendGuide = async (t) => {
       const typing = h('div', { class: 'bub ag' }, h('span', { class: 'eq', style: { color: 'var(--lime)' } }, [0, 1, 2, 3, 4].map(() => h('i'))));
@@ -649,8 +656,37 @@ routes['/account'] = {
         h('small', { class: 'muted', style: { display: 'block' } }, u?.verified ? u.email + ' · confirmed — you are all set.' : 'We sent a verification link and a 6-digit code to ' + u.email + '.')),
       u?.verified ? h('span', { class: 'badge', style: { color: 'var(--lime)', borderColor: 'color-mix(in srgb, var(--lime) 40%, transparent)' } }, 'VERIFIED')
         : h('button', { class: 'btn sm primary', onclick: () => verifySheet() }, icon('mail'), 'Verify now'));
+    const pushState = h('span', { class: 'tiny muted' }, 'Checking…');
+    const pushBtn = h('button', { class: 'btn sm' }, icon('megaphone'), 'Enable');
+    const pushCard = h('div', { class: 'card', style: { display: 'flex', gap: '12px', alignItems: 'center' } },
+      h('div', { class: 'r-ico' }, icon('megaphone')),
+      h('div', { style: { flex: '1', minWidth: '0' } }, h('b', {}, 'Push notifications'), h('small', { class: 'faint', style: { display: 'block' } }, 'Announcements from Reachmark Digital, even with the app closed.'), pushState),
+      pushBtn);
+    const refreshPush = async () => {
+      if (!('Notification' in window) || !navigator.serviceWorker) { pushState.textContent = 'Not supported on this device'; pushBtn.style.display = 'none'; return; }
+      let sub = null;
+      try { const reg = await navigator.serviceWorker.ready; sub = await reg.pushManager.getSubscription(); } catch {}
+      const st = await api('/api/push/state').catch(() => ({ count: 0 }));
+      if (sub && st.count) { pushState.textContent = 'Enabled on this device'; pushBtn.replaceChildren(icon('close'), 'Disable'); pushBtn.onclick = async () => { try { await sub.unsubscribe(); await api('/api/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }); toast('Push notifications disabled', 'megaphone'); } catch (e) { toast(e.message, 'close'); } refreshPush(); }; }
+      else { pushState.textContent = Notification.permission === 'denied' ? 'Blocked in browser settings' : 'Not enabled yet'; pushBtn.replaceChildren(icon('megaphone'), 'Enable'); pushBtn.style.display = Notification.permission === 'denied' ? 'none' : ''; pushBtn.onclick = async () => {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') { pushState.textContent = 'Permission not granted'; return; }
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const { publicKey } = await api('/api/push/vapid');
+          const key = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+          const s2 = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+          const j = s2.toJSON();
+          await api('/api/push/subscribe', { method: 'POST', body: { endpoint: j.endpoint, keys: j.keys } });
+          toast('Push notifications enabled', 'megaphone');
+        } catch (e) { toast(e.message, 'close'); }
+        refreshPush();
+      }; }
+    };
+    refreshPush();
     node.append(h('div', { 'data-stag': '' },
       verCard,
+      pushCard,
       h('div', { class: 'procard' },
         h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center' } },
           h('span', { html: `<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#cff05a"/><circle cx="32" cy="32" r="30" fill="none" stroke="#f4f1e9" stroke-width="3"/><text x="32" y="43" font-size="34" font-weight="900" text-anchor="middle" fill="#151310" font-family="system-ui">R</text><circle cx="47" cy="17" r="4" fill="#151310"/></svg>` }),

@@ -425,6 +425,29 @@ async function waitUp(url, tries = 60) {
     const swtxt = await (await fetch(PUB + '/sw.js')).text();
     ok('service worker has no admin entries', !/admin/i.test(swtxt));
 
+    /* ---------- push & background sync ---------- */
+    group('Push notifications & sync');
+    // fresh session: earlier suspension/force-logout groups invalidate the original jar
+    r = await pub('POST', '/api/auth/signup', { name: 'Push Tester', email: 'pushtest' + Date.now() + '@test.local', password: 'Whatever123!' });
+    ok('push test session ready', r.status === 200 && !!r.j.user);
+    r = await pub('GET', '/api/push/vapid');
+    ok('vapid public key served', r.status === 200 && String(r.j.publicKey || '').startsWith('B'), String(r.j.publicKey || '').slice(0, 8));
+    r = await pub('POST', '/api/push/subscribe', { endpoint: 'https://push.example.test/sub/1', keys: { p256dh: 'BDHtest', auth: 'authtest' } });
+    ok('subscribe stores subscription → 200', r.status === 200 && r.j.ok === true);
+    r = await pub('GET', '/api/push/state');
+    ok('push state counts device', r.status === 200 && r.j.count >= 1, 'count=' + (r.j.count ?? 0));
+    r = await adm('POST', '/api/login', { email: ADMIN_EMAIL, password: ADMIN_PASS });
+    r = await adm('POST', '/api/login/2fa', { token: r.j.token, code: totp.codeAt(secret, Date.now() / 1000) });
+    const csrfPush = r.j.csrf;
+    r = await adm('POST', '/api/push/send', { title: 'Test', body: 'hello', url: '/' }, { 'X-CSRF-Token': csrfPush });
+    ok('admin push send → 200 with tally', r.status === 200 && r.j.total >= 1 && r.j.sent === 0 && r.j.failed >= 1, JSON.stringify(r.j));
+    r = await adm('GET', '/api/audit', undefined, { 'X-CSRF-Token': csrfPush });
+    ok('push send is audited', r.status === 200 && JSON.stringify(r.j).includes('admin.push.send'));
+    r = await pub('POST', '/api/push/unsubscribe', { endpoint: 'https://push.example.test/sub/1' });
+    ok('unsubscribe removes subscription → 200', r.status === 200 && r.j.ok === true);
+    r = await pub('GET', '/api/push/state');
+    ok('push state back to zero', r.status === 200 && r.j.count === 0);
+
     /* ---------- delete user ---------- */
     group('User deletion');
     // re-auth as admin (jar was emptied for the disabled-staff login test)

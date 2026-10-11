@@ -503,6 +503,12 @@ VIEWS.site = async el => {
       <label style="display:block;margin-top:12px" class="tiny dim">Signup credits
         <input id="t-cred" type="number" value="${esc(cfg.signup_credits)}" min="0" max="10000000" style="margin-top:6px;width:160px"></label>
       <button class="btn sm" id="t-cred-save" style="margin-top:8px">Save credits</button>
+      <label style="display:block;margin-top:14px" class="tiny dim">Push announcement title
+        <input id="push-title" maxlength="80" placeholder="Reachmark Audio" style="margin-top:6px"></label>
+      <label style="display:block;margin-top:8px" class="tiny dim">Message
+        <input id="push-body" maxlength="240" placeholder="New studio feature is live — open to try it." style="margin-top:6px"></label>
+      <button class="btn sm" id="push-send" style="margin-top:8px">Send push to subscribers</button>
+      <span class="tiny dim" id="push-res" style="margin-left:8px"></span>
     </div>
     <div class="panel"><h3>Credit costs</h3>
       ${Object.keys(costs).map(k => `<div class="flag-row"><span>${esc(k)}</span><input type="number" min="0" data-cost="${esc(k)}" value="${costs[k]}" style="width:110px"></div>`).join('')}
@@ -522,6 +528,10 @@ VIEWS.site = async el => {
   $('#t-signup').onclick = e => set('signup_on', cfg.signup_on === '1' ? '0' : '1').then(() => VIEWS.site(el));
   $('#t-reqver').onclick = e => set('require_verified', cfg.require_verified === '1' ? '0' : '1').then(() => VIEWS.site(el));
   $('#t-ann-save').onclick = () => set('announcement', $('#t-ann').value.trim());
+  $('#push-send').onclick = async () => {
+    const r = await api('/api/push/send', { title: $('#push-title').value || 'Reachmark Audio', body: $('#push-body').value, url: '/' });
+    $('#push-res').textContent = `sent ${r.sent} · failed ${r.failed} · subscribers ${r.total}`;
+  };
   $('#t-cred-save').onclick = () => set('signup_credits', String(parseInt($('#t-cred').value, 10) || 0));
   $('#t-costs').onclick = () => {
     const o = {}; el.querySelectorAll('[data-cost]').forEach(i => o[i.dataset.cost] = Math.max(0, parseInt(i.value, 10) || 0));

@@ -188,6 +188,16 @@ const support = {
   unreadAdmin: () => db.prepare('SELECT SUM(unreadByAdmin) c FROM support_threads WHERE status != \'closed\'').get().c || 0,
 };
 
+/* ---------- push subscriptions ---------- */
+db.exec('CREATE TABLE IF NOT EXISTS push_subscriptions (endpoint TEXT PRIMARY KEY, uid TEXT, keys TEXT NOT NULL, created INTEGER)');
+const pushSubs = {
+  all: () => db.prepare('SELECT * FROM push_subscriptions').all(),
+  forUser: uid => db.prepare('SELECT * FROM push_subscriptions WHERE uid = ?').all(uid),
+  add: (endpoint, uid, keys) => db.prepare('INSERT OR REPLACE INTO push_subscriptions (endpoint,uid,keys,created) VALUES (?,?,?,?)').run(endpoint, uid || null, JSON.stringify(keys || {}), Date.now()),
+  del: endpoint => db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(endpoint),
+  count: () => db.prepare('SELECT COUNT(*) c FROM push_subscriptions').get().c,
+};
+
 /* ---------- site config ---------- */
 const DEFAULT_CONFIG = {
   maintenance: '0', announcement: '', signup_on: '1', require_verified: '0',
@@ -203,4 +213,4 @@ const config = {
   flags() { try { return JSON.parse(config.get('flags')); } catch { return JSON.parse(DEFAULT_CONFIG.flags); } },
 };
 
-module.exports = { db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config };
+module.exports = { db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config, pushSubs };

@@ -6,7 +6,7 @@ import { Player, Recorder, serverTTS, browserSpeak, pickFile, recordBlobToWavDat
 export async function myVoices(force) { if (force) return refreshVoices(); return db.voices; }
 let _md = null, _mt = 0;
 export async function models() {
-  if (!_md || Date.now() - _mt > 30000) { try { _md = (await api('/api/models')).models; _mt = Date.now(); } catch { _md = []; } }
+  if (!_md || Date.now() - _mt > 30000) { try { _md = (await api('/api/models')).models; _mt = Date.now(); } catch { try { const c = await caches.match('/api/catalog'); _md = c ? (await c.json()).models : []; } catch { _md = []; } } }
   return _md;
 }
 export const LANGS = [['auto', '', 'Auto'], ['en', '🇬🇧', 'English'], ['fr', '🇫🇷', 'French'], ['es', '🇪🇸', 'Spanish'], ['de', '🇩🇪', 'German']];

@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
-    "nodemailer": "^10.0.16"
+    "nodemailer": "^10.0.16",
+    "web-push": "^3.6.7"
   },
   "engines": {
     "node": ">=18"
