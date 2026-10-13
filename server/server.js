@@ -202,7 +202,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     /* ---- public ---- */
-    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), time: Date.now() });
+    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), mail: mail.configured(), time: Date.now() });
     if (p === '/api/catalog') return json(res, 200, { models: tts.catalog() }); // public, cacheable by SW periodic sync
     if (p === '/api/config') return json(res, 200, {
       announcement: store.config.get('announcement'),

@@ -559,3 +559,36 @@ input,textarea{user-select:text;-webkit-user-select:text}
   #topbar{padding-left:calc(env(titlebar-area-x, 0px) + 12px);padding-right:calc(100vw - env(titlebar-area-width, 100vw) - env(titlebar-area-x, 0px) + 12px);-webkit-app-region:drag;app-region:drag}
   #topbar button,#topbar .brand,#topbar input{-webkit-app-region:no-drag;app-region:no-drag}
 }
+
+/* ---------- design pass: ambient depth, precision colour, app polish ---------- */
+.landing{background:
+  radial-gradient(1100px 560px at 12% -8%, color-mix(in srgb, var(--lime) 8%, transparent), transparent 62%),
+  radial-gradient(900px 480px at 88% -4%, color-mix(in srgb, var(--orange) 7%, transparent), transparent 60%),
+  radial-gradient(760px 520px at 50% 112%, color-mix(in srgb, var(--violet) 6%, transparent), transparent 62%)}
+.auth-hero .logo-lg.logo-img{position:relative}
+.auth-hero .logo-lg.logo-img::after{content:'';position:absolute;inset:-10px;border-radius:32px;background:conic-gradient(from 140deg, color-mix(in srgb,var(--lime) 55%,transparent), color-mix(in srgb,var(--orange) 45%,transparent) 40%, color-mix(in srgb,var(--violet) 45%,transparent) 70%, color-mix(in srgb,var(--lime) 55%,transparent));filter:blur(22px);opacity:.5;z-index:-1;animation:spinSlow 14s linear infinite}
+@keyframes spinSlow{to{transform:rotate(360deg)}}
+.sect{display:flex;align-items:center;gap:12px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+.sect::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.qcard:nth-child(4n+2) .qi{background:color-mix(in srgb,var(--orange) 12%,transparent);color:var(--orange)}
+.qcard:nth-child(4n+3) .qi{background:color-mix(in srgb,var(--violet) 13%,transparent);color:var(--violet)}
+.qcard:nth-child(4n+4) .qi{background:color-mix(in srgb,var(--cyan) 12%,transparent);color:var(--cyan)}
+.lp-card:nth-child(4n+2) .qi{background:color-mix(in srgb,var(--orange) 12%,transparent);color:var(--orange)}
+.lp-card:nth-child(4n+3) .qi{background:color-mix(in srgb,var(--violet) 13%,transparent);color:var(--violet)}
+.lp-card:nth-child(4n+4) .qi{background:color-mix(in srgb,var(--cyan) 12%,transparent);color:var(--cyan)}
+.btn.primary{background:linear-gradient(135deg,var(--lime),var(--lime-deep));color:#151310;box-shadow:0 8px 26px color-mix(in srgb,var(--lime) 20%,transparent);transition:transform .18s var(--spring),box-shadow .25s,filter .2s}
+.btn.primary:hover{transform:translateY(-1px);box-shadow:0 12px 32px color-mix(in srgb,var(--lime) 26%,transparent);filter:saturate(1.05)}
+#topbar{border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.dash-head{position:relative;overflow:hidden}
+.dash-head::before{content:'';position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,var(--lime),var(--orange) 45%,var(--violet) 80%,transparent)}
+#tabbar button{border-radius:16px;margin:8px 3px;transition:background .25s,color .2s,transform .18s var(--spring)}
+#tabbar button.on{background:color-mix(in srgb,var(--lime) 11%,transparent);color:var(--lime-deep)}
+[data-theme="light"] #tabbar button.on{color:#5c7a12}
+#tabbar button.on svg{transform:scale(1.06)}
+.voicecard:hover{border-color:color-mix(in srgb,var(--lime) 40%,var(--line));box-shadow:0 10px 30px rgba(0,0,0,.3)}
+:focus-visible{outline:2px solid var(--lime);outline-offset:2px;border-radius:8px}
+::selection{background:color-mix(in srgb,var(--lime) 28%,transparent)}
+.stat:hover{transform:translateY(-2px);border-color:var(--line2)}
+.stat{transition:transform .2s var(--spring),border-color .2s}
+
+.auth-hero .logo-lg.logo-img{z-index:0}

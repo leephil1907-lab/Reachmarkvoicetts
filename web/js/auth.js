@@ -57,6 +57,7 @@ routes['/auth'] = {
       });
     } }, 'Forgot password?');
     node.style.paddingBottom = '0';
+    node.classList.add('landing');
     const goSignup = () => { setMode('signup'); const c = document.querySelector('.auth-card'); c && c.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => emailF.focus({ preventScroll: true }), 350); };
     const scrollTo = (sel) => () => document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     node.append(h('nav', { class: 'lp-nav', 'data-stag': '' },
