@@ -13,6 +13,7 @@ const tts = require('./tts');
 const engines = require('./engines');
 const store = require('./db');
 const llm = require('./llm');
+const el = require('./elevenlabs');
 const brainS = require('./brain');
 const mail = require('./mail');
 const pushlib = require('./pushlib');
@@ -48,6 +49,8 @@ function voiceDoc(b) {
     desc: str(b.desc, 500) || '',
     tags: arrStr(b.tags, 10, 24),
     model: str(b.model, 64) || null,
+    engine: oneOf(str(b.engine, 12), ['piper', 'elevenlabs'], 'piper'),
+    engineVoiceId: str(b.engineVoiceId, 64) || null,
     semitones: num(b.semitones, -12, 12, 0),
     rate: num(b.rate, 0.5, 2, 1),
     fx: oneOf(str(b.fx, 10), FX, 'none'),
@@ -120,7 +123,7 @@ function readBody(req, limit = MAX_BODY) {
   });
 }
 const b64ToBuf = s => Buffer.from(String(s).split(',')[1] || String(s), 'base64');
-const saveRender = (buf, tag, uid) => { const f = tag + '_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex') + '.wav'; fs.writeFileSync(path.join(RENDER, f), buf); store.renders.add(f, uid); return '/api/render/' + f; };
+const saveRender = (buf, tag, uid, ext = '.wav') => { const f = tag + '_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex') + ext; fs.writeFileSync(path.join(RENDER, f), buf); store.renders.add(f, uid); return '/api/render/' + f; };
 const wavSeconds = buf => { try { const sr = buf.readUInt32LE(24), ch = buf.readUInt16LE(22); return (buf.length - 44) / (sr * 2 * ch); } catch { return 0; } };
 
 function securityHeaders(res, req) {
@@ -202,7 +205,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     /* ---- public ---- */
-    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), mail: mail.configured(), time: Date.now() });
+    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), llmProvider: llm.provider(), elevenlabs: el.configured(), mail: mail.configured(), time: Date.now() });
     if (p === '/api/catalog') return json(res, 200, { models: tts.catalog() }); // public, cacheable by SW periodic sync
     if (p === '/api/config') return json(res, 200, {
       announcement: store.config.get('announcement'),
@@ -210,6 +213,7 @@ const server = http.createServer(async (req, res) => {
       signup_on: store.config.get('signup_on') === '1',
       flags: store.config.flags(), costs: store.config.costs(),
       default_voice: store.config.get('default_voice'),
+      engines: { elevenlabs: el.configured(), llm: llm.configured(), llmProvider: llm.provider() },
     });
 
     if (p === '/api/auth/signup' && req.method === 'POST') {
@@ -434,16 +438,27 @@ const server = http.createServer(async (req, res) => {
         () => {
           const text = str(b.text, 4000)?.trim();
           if (!text) throw Object.assign(new Error('Text is required.'), { status: 400 });
-          if (!tts.catalog().length) throw Object.assign(new Error('Speech engine has no voices installed on this server.'), { status: 503 });
           let opts = { text, model: str(b.model, 64), lang: str(b.lang, 8), semitones: num(b.semitones, -12, 12, 0), rate: num(b.rate, 0.5, 2, 1), fx: oneOf(str(b.fx, 10), FX, 'none') };
           if (b.voiceId) {
             const v = store.voices.get(uid, str(b.voiceId, 40));
             if (v && v.disabled) throw Object.assign(new Error('This voice has been disabled by support.'), { status: 403 });
+            if (v && v.engine === 'elevenlabs') {
+              if (!el.configured()) throw Object.assign(new Error('This voice runs on the ElevenLabs cloud engine, which is not connected on this server (ELEVENLABS_API_KEY). Pick a local voice or ask support to connect it.'), { status: 503 });
+              if (!el.validVoiceId(v.engineVoiceId)) throw Object.assign(new Error('This voice has an unusable provider id — delete it and design a new one.'), { status: 422 });
+              return { ...opts, elVoiceId: v.engineVoiceId, elName: v.name };
+            }
             if (v) opts = { ...opts, model: v.model ?? opts.model, semitones: opts.semitones || v.semitones, rate: b.rate ? opts.rate : (v.rate || 1), fx: opts.fx === 'none' ? v.fx : opts.fx };
           }
+          if (!opts.elVoiceId && !tts.catalog().length) throw Object.assign(new Error('Speech engine has no voices installed on this server.'), { status: 503 });
           return opts;
         },
         async opts => {
+          if (opts.elVoiceId) {
+            const buf = await el.tts(opts.elVoiceId, opts.text);
+            const saved = b.save ? saveRender(buf, 'tts', uid, '.mp3') : null;
+            const seconds = buf.length / 16000; // ~128 kbps mp3 estimate
+            return { seconds, respond: () => send(res, 200, buf, { 'Content-Type': 'audio/mpeg', 'X-Reachmark-Url': saved || '', 'X-Reachmark-Voice': opts.elVoiceId, 'X-Reachmark-Engine': 'elevenlabs', ...creditHeader(user), 'Cache-Control': 'no-store' }) };
+          }
           const { buf, voice } = await tts.synthesize(opts, uid);
           const saved = b.save ? saveRender(buf, 'tts', uid) : null;
           return { seconds: wavSeconds(buf), respond: () => send(res, 200, buf, { 'Content-Type': 'audio/wav', 'X-Reachmark-Url': saved || '', 'X-Reachmark-Voice': voice.id, ...creditHeader(user), 'Cache-Control': 'no-store' }) };
@@ -504,11 +519,55 @@ const server = http.createServer(async (req, res) => {
           return { seconds: 0, respond: () => json(res, 200, { voice: profile }, creditHeader(user)) };
         });
     }
+    /* ---- Voice Design (ElevenLabs cloud engine; honest 503 when not connected) ---- */
+    if (p === '/api/design/previews' && req.method === 'POST') {
+      if (!needFlag('design')) return;
+      if (!el.configured()) return json(res, 503, { error: 'Voice Design engine is not connected on this server (ELEVENLABS_API_KEY). The on-server trait parser still designs voices from your description.' });
+      const b = JSON.parse(await readBody(req, 2e6));
+      if (!store.rateLimit('design:' + uid, 10, 60000)) return json(res, 429, { error: 'Slow down — 10 design runs per minute.' });
+      return paid(res, user, costs.design || 25,
+        () => {
+          const description = String(b.description || '').trim();
+          if (description.length < 20 || description.length > 1000) throw Object.assign(new Error('Describe the voice in 20-1000 characters.'), { status: 400 });
+          const text = b.text ? String(b.text).trim() : '';
+          if (text && (text.length < 100 || text.length > 1000)) throw Object.assign(new Error('Custom preview script must be 100-1000 characters.'), { status: 400 });
+          return { description, text };
+        },
+        async ctx => {
+          const out = await el.designPreviews(ctx);
+          return { seconds: 0, respond: () => json(res, 200, { previews: out.previews, text: out.text, engine: 'elevenlabs', model: el.model() }, creditHeader(user)) };
+        });
+    }
+    if (p === '/api/design/save' && req.method === 'POST') {
+      if (!needFlag('design')) return;
+      if (!el.configured()) return json(res, 503, { error: 'Voice Design engine is not connected on this server (ELEVENLABS_API_KEY).' });
+      const b = JSON.parse(await readBody(req, 2e6));
+      return paid(res, user, costs.designSave || 50,
+        () => {
+          if (store.voices.list(uid).length >= slots) throw Object.assign(new Error('Voice slot limit reached on Free (3). Start the Plus trial from Account → Upgrade.'), { status: 402 });
+          const generatedVoiceId = String(b.generatedVoiceId || '').trim();
+          if (generatedVoiceId.length < 10 || generatedVoiceId.length > 128) throw Object.assign(new Error('Pick a generated preview first.'), { status: 400 });
+          const description = String(b.description || '').trim();
+          if (description.length < 20 || description.length > 1000) throw Object.assign(new Error('Keep the original 20-1000 character description.'), { status: 400 });
+          return { generatedVoiceId, description, name: str(b.name, 60) || 'Designed voice' };
+        },
+        async ctx => {
+          const { voiceId } = await el.saveDesigned(ctx);
+          const id = 'v_' + crypto.randomBytes(4).toString('hex');
+          const voice = { id, kind: 'design', name: ctx.name, desc: ctx.description, tags: ['elevenlabs', 'designed'], engine: 'elevenlabs', engineVoiceId: voiceId, model: null, semitones: 0, rate: 1, fx: 'none', created: Date.now() };
+          store.voices.add(uid, voice);
+          return { seconds: 0, respond: () => json(res, 201, { voice }, creditHeader(user)) };
+        });
+    }
     if (p.startsWith('/api/render/')) {
       const file = path.basename(p);
       if (store.renders.owner(file) !== uid) return json(res, 404, { error: 'not found' });
       const fp = path.join(RENDER, file);
-      if (fs.existsSync(fp)) return wav(res, fs.readFileSync(fp), { 'Cache-Control': 'private, max-age=86400' });
+      if (fs.existsSync(fp)) {
+        const buf = fs.readFileSync(fp);
+        const type = file.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav';
+        return send(res, 200, buf, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'private, max-age=86400' });
+      }
       return json(res, 404, { error: 'not found' });
     }
 

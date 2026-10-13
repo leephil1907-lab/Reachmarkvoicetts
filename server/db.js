@@ -201,7 +201,7 @@ const pushSubs = {
 /* ---------- site config ---------- */
 const DEFAULT_CONFIG = {
   maintenance: '0', announcement: '', signup_on: '1', require_verified: '0',
-  costs: JSON.stringify({ ttsPer40: 1, ttsMin: 5, vc: 20, match: 150, separate: 30, dub: 15, chat: 2 }),
+  costs: JSON.stringify({ ttsPer40: 1, ttsMin: 5, vc: 20, match: 150, separate: 30, dub: 15, chat: 2, design: 25, designSave: 50 }),
   signup_credits: '10000', default_voice: '',
   flags: JSON.stringify({ tts: 1, changer: 1, match: 1, design: 1, dub: 1, lip: 1, sep: 1, agents: 1, support: 1 }),
 };
@@ -209,7 +209,7 @@ const config = {
   get(key) { const r = db.prepare('SELECT value FROM site_config WHERE key = ?').get(key); return r ? r.value : (DEFAULT_CONFIG[key] ?? ''); },
   set(key, value) { db.prepare('INSERT OR REPLACE INTO site_config (key,value) VALUES (?,?)').run(key, String(value)); },
   all() { const o = { ...DEFAULT_CONFIG }; for (const r of db.prepare('SELECT key,value FROM site_config').all()) o[r.key] = r.value; return o; },
-  costs() { try { return JSON.parse(config.get('costs')); } catch { return JSON.parse(DEFAULT_CONFIG.costs); } },
+  costs() { try { return { ...JSON.parse(DEFAULT_CONFIG.costs), ...JSON.parse(config.get('costs')) }; } catch { return JSON.parse(DEFAULT_CONFIG.costs); } },
   flags() { try { return JSON.parse(config.get('flags')); } catch { return JSON.parse(DEFAULT_CONFIG.flags); } },
 };
 

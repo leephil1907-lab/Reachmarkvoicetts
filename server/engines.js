@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const tts = require('./tts');
+const el = require('./elevenlabs');
+const llm = require('./llm');
 
 const VENDOR = path.join(__dirname, '..', 'vendor');
 
@@ -40,6 +42,18 @@ const ENGINES = [
     kind: 'gpu',
   },
   {
+    id: 'elevenlabs', name: 'ElevenLabs Voice Design & TTS', repo: 'api.elevenlabs.io (cloud)',
+    role: 'Real text-to-voice design: describe a voice, hear three generated previews, keep the one you like. Multilingual neural TTS (eleven_multilingual_v2) for designed voices, agents and calls.',
+    components: ['/v1/text-to-voice/design previews', '/v1/text-to-voice save', '/v1/text-to-speech render'],
+    kind: 'cloud',
+  },
+  {
+    id: 'anthropic', name: 'Anthropic Claude', repo: 'api.anthropic.com (cloud)',
+    role: 'In-character conversation engine: character agents and voice calls answer from their brief, then speak the reply in their own voice.',
+    components: ['messages API', 'persona system prompt', 'speakable reply constraints'],
+    kind: 'cloud',
+  },
+  {
     id: 'voicestudio', name: 'VoiceStudio', repo: 'debpalash/VoiceStudio', dir: 'VoiceStudio',
     role: 'Studio workspace patterns: project/history model, separation pipeline layout, Electron desktop shell reference.',
     components: ['frontend studio layout', 'backend separation service shape', 'electron packaging'],
@@ -67,6 +81,8 @@ async function status() {
     const vendored = e.dir ? fs.existsSync(path.join(VENDOR, e.dir)) : false;
     if (e.id === 'reachmark-core') { state = 'online'; detail = 'serving'; }
     else if (e.id === 'piper') { const st = tts.status(); state = st.ready ? 'online' : 'offline'; detail = st.voices + ' neural voices loaded · 30s synth guard · queue capped'; }
+    else if (e.id === 'elevenlabs') { state = el.configured() ? 'online' : 'standby'; detail = el.configured() ? 'cloud · ' + el.model() : 'ELEVENLABS_API_KEY not set — local trait parser + piper stay in charge'; }
+    else if (e.id === 'anthropic') { const on = llm.provider() === 'anthropic'; state = on ? 'online' : (llm.configured() ? 'online' : 'standby'); detail = on ? 'cloud · ' + llm.model() : (llm.configured() ? 'cloud · ' + llm.model() + ' (OpenAI-compatible)' : 'ANTHROPIC_API_KEY not set — on-device persona brain answers'); }
     else if (e.kind === 'gpu') { state = torch ? 'ready' : 'standby'; detail = torch ? 'torch ' + torch : 'needs GPU/torch — CPU fallback active'; }
     else if (e.id === 'voicestudio') { state = 'merged'; detail = 'patterns ported into UI + desktop shell'; }
     return { ...e, vendored, state, detail };

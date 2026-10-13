@@ -152,7 +152,8 @@ VIEWS.dashboard = async el => {
     <div class="panel"><h3>Engine health</h3>
       <div class="kv">
         <b>Piper TTS</b><span>${s.piper.ready ? '<span class="led on"></span> ready' : '<span class="led off"></span> not loaded'} · ${s.piper.voices ?? 0} voices${s.piper.queue != null ? ' · queue ' + s.piper.queue : ''}</span>
-        <b>LLM brain</b><span>${s.llm.configured ? '<span class="led on"></span> ' + esc(s.llm.model) : '<span class="led off"></span> not configured — agents use local persona fallback'}</span>
+        <b>LLM brain</b><span>${s.llm.configured ? '<span class="led on"></span> ' + esc(s.llm.model) + (s.llm.provider ? ' (' + esc(s.llm.provider) + ')' : '') : '<span class="led off"></span> not configured — agents use local persona fallback'}</span>
+        <b>ElevenLabs cloud</b><span>${s.elevenlabs && s.elevenlabs.configured ? '<span class="led on"></span> ' + esc(s.elevenlabs.model) + ' — Voice Design + neural TTS live' : '<span class="led off"></span> ELEVENLABS_API_KEY not set — trait parser + piper in charge'}</span>
         <b>Disk</b><span>${s.disk ? s.disk.freeGB + ' GB free / ' + s.disk.totalGB + ' GB' : 'n/a'}</span>
         <b>Support</b><span>${s.supportUnread} unread · ${s.threadsOpen} open threads</span>
       </div>

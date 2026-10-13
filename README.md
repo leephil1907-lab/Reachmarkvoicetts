@@ -9,9 +9,19 @@ Built for **worldwide use**: accounts, voice translation across languages, and s
 
 ## New in v1.3
 
+- **Cloud Voice Design (ElevenLabs)** — merged the Reachmark Voice API blueprint into the
+  platform: `POST /api/design/previews` turns a plain-text description into three real
+  generated audio previews (`ELEVENLABS_API_KEY` + `TTS_MODEL` env, 25 ✦ per run),
+  `POST /api/design/save` keeps the chosen preview as a permanent voice (50 ✦), and
+  `/api/tts` renders that voice through `eleven_multilingual_v2` (mp3). Without the key the
+  studio says so honestly (503) and the on-server trait parser + piper stay in charge.
+- **Claude-powered agents** — with `ANTHROPIC_API_KEY` set, character agents and voice calls
+  answer in-character via the Anthropic messages API (speakable replies, first-turn-is-user
+  normalisation, 20-turn history cap) and speak in their own designed or matched voice.
 - **Real character agents** — every agent chat & voice call now runs through the server
   (`POST /api/agent/chat`): the agent's persona/role/knowledge become a system prompt for an
-  OpenAI-compatible LLM (`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` env). History is capped
+  Anthropic Claude (`ANTHROPIC_API_KEY`, `CLAUDE_MODEL` env) or any OpenAI-compatible LLM
+  (`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` env). History is capped
   (12 messages), the route is rate-limited (30 msgs/min/user) and charged server-side
   (2 ✦ per reply, atomic refund on failure — the platform Guide stays free). With no LLM key
   configured, agents fall back to the built-in persona brain (`server/brain.js`) — replies are
@@ -78,6 +88,10 @@ SUPPORT_EMAIL=support@reachmarkdigital.com \
 LLM_API_KEY=sk-...             # optional: OpenAI-compatible key for character agents
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
+ELEVENLABS_API_KEY=sk_...      # optional: cloud Voice Design + eleven_multilingual_v2 TTS
+TTS_MODEL=eleven_multilingual_v2
+ANTHROPIC_API_KEY=sk-ant-...   # optional: Claude in-character agent replies
+CLAUDE_MODEL=claude-sonnet-5-5
 npm run start:admin            # admin only · npm run start:web → public only
 ```
 
@@ -138,12 +152,14 @@ key the app reads, so a fresh Railway service is configured on first deploy:
 `ADMIN_URL, SUPPORT_EMAIL, SMTP_HOST, SMTP_PORT, SMTP_USER, MAIL_FROM, LLM_BASE_URL,
 LLM_MODEL`. See `.env.example` for the annotated list.
 
-**The five secrets are created EMPTY on purpose** (this repo is public — secrets never go
+**The secrets are created EMPTY on purpose** (this repo is public — secrets never go
 into git): `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SMTP_PASS`, `LLM_API_KEY`,
-`ADMIN_IP_ALLOWLIST`. Paste them once in the Railway dashboard (Variables tab) or via CLI
+`ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, `ADMIN_IP_ALLOWLIST`. Non-secret cloud defaults
+(`CLAUDE_MODEL`, `TTS_MODEL`) ship pre-filled. Paste them once in the Railway dashboard (Variables tab) or via CLI
 (`railway variables set SMTP_PASS=… ADMIN_EMAIL=… ADMIN_PASSWORD=…`); every restart picks
 them up. Without them the app still runs: no admin seeded, mail falls back to
-`data/outbox.log`, agents use the local persona brain.
+`data/outbox.log`, agents use the local persona brain, Voice Design uses the on-server
+trait parser and TTS renders with local piper voices.
 
 **Two services, one database — the honest constraint:** both apps share ONE SQLite file on ONE
 persistent disk (WAL makes multi-process access safe), and Render attaches a disk to exactly one

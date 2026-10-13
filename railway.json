@@ -1,6 +1,9 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
   "deploy": {
     "startCommand": "node server/server.js",
     "healthcheckPath": "/api/health",
@@ -28,7 +31,11 @@
     "ADMIN_IP_ALLOWLIST": "",
     "SMTP_PASS": "",
     "LLM_API_KEY": "",
-      "VAPID_PUBLIC_KEY": "",
-      "VAPID_PRIVATE_KEY": ""
+    "VAPID_PUBLIC_KEY": "",
+    "VAPID_PRIVATE_KEY": "",
+    "ELEVENLABS_API_KEY": "",
+    "ANTHROPIC_API_KEY": "",
+    "CLAUDE_MODEL": "claude-sonnet-5-5",
+    "TTS_MODEL": "eleven_multilingual_v2"
   }
 }

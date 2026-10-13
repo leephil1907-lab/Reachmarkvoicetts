@@ -127,6 +127,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   renderRoute();
   try {
     const cfg = await api('/api/config');
+    db.engines = cfg.engines || {};
     if (cfg.maintenance) toast('Under maintenance — studios are briefly paused', 'cpu');
     if (cfg.announcement) {
       const bar = h('button', { class: 'announce', 'aria-label': 'Dismiss announcement', onclick: e => e.currentTarget.remove() },

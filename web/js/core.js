@@ -89,7 +89,7 @@ export function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
 export const uid = p => (p || 'id') + '_' + Math.random().toString(36).slice(2, 9);
 
 /* ---------------- session + cloud db ---------------- */
-export const db = { user: null, voices: [], agents: [], history: [] };
+export const db = { user: null, voices: [], agents: [], history: [], engines: {} };
 export async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: opts.body ? { 'content-type': 'application/json' } : {},
