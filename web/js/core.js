@@ -274,6 +274,50 @@ function afterMount(node, route, path) {
   route.mounted?.(node);
   currentView = path;
   refreshVerifyBanner();
+  revealLanding(node);
+}
+
+/* ---------- scroll-driven reveals (landing pages) ---------- */
+/* stag() already numbers children with --i; here they start invisible and rise
+   into place as the scroller reaches them — the landing.love pattern, zero libs. */
+function revealLanding(node) {
+  if (!node.classList?.contains('landing')) return;
+  const els = node.querySelectorAll('[data-stag] > *');
+  if (!('IntersectionObserver' in window)) { els.forEach(el => el.classList.add('rv-in')); return; }
+  const root = document.querySelector('#view');
+  const io = new IntersectionObserver(entries => {
+    for (const en of entries) if (en.isIntersecting) { en.target.classList.add('rv-in'); io.unobserve(en.target); }
+  }, { root, rootMargin: '0px 0px -6% 0px', threshold: 0.02 });
+  els.forEach(el => { el.classList.add('rv'); io.observe(el); });
+}
+
+/* ---------- pointer spotlight + 3D tilt (kinetics-style, fine pointers only) ---------- */
+const SPOT_SEL = '.qcard, .lp-card, .stat, .voicecard, .auth-card';
+const TILT_SEL = '.qcard, .lp-card, .voicecard';
+if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  let spotRaf = 0, spotE = null;
+  addEventListener('pointermove', e => {
+    spotE = e;
+    if (spotRaf) return;
+    spotRaf = requestAnimationFrame(() => {
+      spotRaf = 0;
+      const el = spotE.target?.closest?.(SPOT_SEL);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const px = (spotE.clientX - r.left) / r.width, py = (spotE.clientY - r.top) / r.height;
+      el.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
+      el.style.setProperty('--my', (py * 100).toFixed(1) + '%');
+      if (el.matches(TILT_SEL)) {
+        el.style.setProperty('--ty', ((px - 0.5) * 5).toFixed(2) + 'deg');   // yaw ±2.5°
+        el.style.setProperty('--tx', ((0.5 - py) * 4).toFixed(2) + 'deg');   // pitch ±2°
+      }
+    });
+  }, { passive: true });
+  addEventListener('pointerout', e => {
+    const el = e.target?.closest?.(TILT_SEL);
+    if (el && !el.contains(e.relatedTarget)) { el.style.setProperty('--tx', '0deg'); el.style.setProperty('--ty', '0deg'); }
+  }, { passive: true });
 }
 
 /* ---------- email verification: banner + sheet (link or 6-digit code) ---------- */

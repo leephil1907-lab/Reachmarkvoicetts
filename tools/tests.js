@@ -67,8 +67,17 @@ async function waitUp(url, tries = 60) {
     ADMIN_EMAIL, ADMIN_PASSWORD: ADMIN_PASS, SUPPORT_EMAIL: 'support@test.local',
     LLM_API_KEY: '',
   };
+  // refuse to run against a stray server squatting the test ports (a leaked child
+  // from a crashed run silently hijacks the whole suite — seen it, fixed it)
+  for (const u of [PUB + '/api/health', ADM + '/health']) {
+    try { await fetch(u, { signal: AbortSignal.timeout(700) }); console.error('FATAL: something is already listening on ' + u + ' — kill the stray process first.'); process.exit(1); } catch {}
+  }
   const pubProc = spawn('node', ['server/server.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   const admProc = spawn('node', ['admin/server.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const killKids = () => { for (const c of [pubProc, admProc]) { try { c.kill('SIGKILL'); } catch {} } };
+  process.on('exit', killKids);
+  process.on('uncaughtException', e => { console.error('SUITE CRASH:', e); killKids(); process.exit(1); });
+  process.on('SIGINT', () => { killKids(); process.exit(130); });
   let pubLog = '', admLog = '';
   pubProc.stdout.on('data', d => pubLog += d); pubProc.stderr.on('data', d => pubLog += d);
   admProc.stdout.on('data', d => admLog += d); admProc.stderr.on('data', d => admLog += d);

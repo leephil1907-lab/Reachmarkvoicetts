@@ -627,3 +627,91 @@ input,textarea{user-select:text;-webkit-user-select:text}
 .lp-foot2 .fbot{grid-column:1/-1;display:flex;gap:14px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);margin-top:6px;padding-top:18px;color:var(--faint);font-size:12px}
 .lp-foot2 .fbot .brand{padding:0}
 .lp-foot2 .fbot .brand .logo{width:30px;height:30px;border-radius:9px}
+
+/* ============================================================
+   MODERN MOTION PASS — glass, aurora, spotlight/tilt, reveals.
+   Inspired by glass.samasante.com (frosted refraction cards),
+   kinetics.colorion.co (pointer-driven motion), landing.love
+   (scroll-choreographed sections) — all hand-rolled, zero libs.
+   ============================================================ */
+
+/* ---------- WebGL aurora behind the landing hero ---------- */
+.auth-hero{position:relative;isolation:isolate}
+.aurora{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;opacity:.5;
+  border-radius:var(--r-lg);
+  -webkit-mask:radial-gradient(120% 100% at 50% 0%,#000 55%,transparent 100%);
+  mask:radial-gradient(120% 100% at 50% 0%,#000 55%,transparent 100%)}
+.auth-hero>*:not(.aurora){position:relative;z-index:1}
+[data-theme="light"] .aurora{display:none} /* light theme keeps its soft radial glows */
+
+/* ---------- frosted chrome ---------- */
+@supports ((backdrop-filter:blur(8px)) or (-webkit-backdrop-filter:blur(8px))){
+  #topbar{background:color-mix(in srgb,var(--canvas) 66%,transparent);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5)}
+  #tabbar{background:color-mix(in srgb,var(--surface) 72%,transparent);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4)}
+  .sheet,.dropdown{background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5)}
+  .lp-nav{background:color-mix(in srgb,var(--canvas) 60%,transparent);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4)}
+  .qcard,.lp-card,.stat,.voicecard,.auth-card{background:color-mix(in srgb,var(--surface2) 64%,transparent);backdrop-filter:blur(13px) saturate(1.3);-webkit-backdrop-filter:blur(13px) saturate(1.3)}
+  .lp-card{background:linear-gradient(160deg,color-mix(in srgb,var(--surface2) 66%,transparent),color-mix(in srgb,var(--surface) 58%,transparent))}
+  [data-theme="light"] .qcard,[data-theme="light"] .lp-card,[data-theme="light"] .stat,[data-theme="light"] .voicecard,[data-theme="light"] .auth-card{background:color-mix(in srgb,#ffffff 68%,transparent)}
+}
+
+/* ---------- gradient hairline + specular edge on cards ---------- */
+.qcard,.lp-card,.stat,.voicecard{position:relative}
+.qcard::before,.lp-card::before,.stat::before,.voicecard::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(140deg,rgba(255,255,255,.16),rgba(255,255,255,.02) 38%,transparent 55%,color-mix(in srgb,var(--lime) 16%,transparent));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+  opacity:0;transition:opacity .3s var(--ease)}
+.qcard:hover::before,.lp-card:hover::before,.stat:hover::before,.voicecard:hover::before{opacity:1}
+.qcard,.lp-card,.stat,.voicecard{box-shadow:inset 0 1px 0 rgba(255,255,255,.045)}
+[data-theme="light"] .qcard::before,[data-theme="light"] .lp-card::before,[data-theme="light"] .stat::before,[data-theme="light"] .voicecard::before{background:linear-gradient(140deg,rgba(255,255,255,.9),transparent 45%,rgba(29,26,21,.10))}
+
+/* ---------- pointer spotlight ---------- */
+.qcard::after,.lp-card::after,.stat::after,.voicecard::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--lime) 11%,transparent),transparent 62%);
+  opacity:0;transition:opacity .35s var(--ease)}
+.qcard:hover::after,.lp-card:hover::after,.stat:hover::after,.voicecard:hover::after{opacity:1}
+.qcard,.lp-card,.voicecard{overflow:hidden}
+
+/* ---------- 3D tilt (vars set by core.js pointer delegation) ---------- */
+@media (pointer:fine){
+  .qcard,.lp-card,.voicecard{transform:perspective(760px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));transition:transform .45s var(--ease),border-color .2s,box-shadow .3s;will-change:transform}
+  .qcard:hover,.lp-card:hover{transform:perspective(760px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) translateY(-4px);box-shadow:0 18px 48px rgba(0,0,0,.40)}
+  .voicecard:hover{transform:perspective(760px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg)) translateY(-3px)}
+  [data-theme="light"] .qcard:hover,[data-theme="light"] .lp-card:hover{box-shadow:0 18px 44px rgba(60,50,30,.16)}
+}
+
+/* ---------- scroll-driven reveals ---------- */
+.landing [data-stag]>*.rv{opacity:0}
+.landing [data-stag]>*.rv.rv-in{animation:riseIn .68s var(--ease) both;animation-delay:calc(var(--i,0)*55ms)}
+
+/* ---------- seamless marquee chips ---------- */
+.lp-chips{display:block;overflow:hidden;margin-top:20px;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
+  mask:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.marq-track{display:flex;width:max-content;animation:marq 32s linear infinite}
+.marq-grp{display:flex;gap:8px;padding-right:8px}
+.lp-chips:hover .marq-track{animation-play-state:paused}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+/* ---------- smoother route transitions (blur-dissolve) ---------- */
+.view{animation:viewIn .44s var(--ease) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(14px) scale(.992);filter:blur(6px)}55%{filter:blur(0)}to{opacity:1;transform:none;filter:blur(0)}}
+.view.leaving{animation:viewOut .18s ease both;pointer-events:none}
+@keyframes viewOut{to{opacity:0;transform:translateY(-8px) scale(.994);filter:blur(4px)}}
+
+/* ---------- skeleton polish ---------- */
+.skeleton{background:linear-gradient(100deg,var(--surface2) 28%,color-mix(in srgb,var(--card2) 82%,var(--lime) 6%) 48%,var(--surface2) 68%);background-size:220% 100%;animation:shim 1.4s cubic-bezier(.4,0,.6,1) infinite;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 55%,transparent)}
+
+/* ---------- reduced motion: everything calm, nothing hidden ---------- */
+@media (prefers-reduced-motion:reduce){
+  .view,.view.leaving{animation-duration:.01s!important}
+  .marq-track{animation:none}
+  .landing [data-stag]>*.rv{opacity:1}
+  .landing [data-stag]>*.rv.rv-in{animation:none}
+  .qcard,.lp-card,.voicecard,.qcard:hover,.lp-card:hover,.voicecard:hover{transform:none!important}
+  .qcard::after,.lp-card::after,.stat::after,.voicecard::after{display:none}
+  .skeleton{animation-duration:2.4s}
+}

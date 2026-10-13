@@ -1,5 +1,28 @@
 // Reachmark Audio — signup & login (real accounts, 10,000 ✦ on signup).
 import { h, icon, icons, routes, navigate, toast, api, db, refreshAll, sheet, modal, refreshVerifyBanner } from './core.js';
+import { mountAurora } from './gl-bg.js';
+
+/* count-up for hero stats — respects reduced motion, keeps suffixes like '+' and ' s' */
+function animateStats(root) {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  root.querySelectorAll('.lp-stats b').forEach(b => {
+    const m = /^([^\d]*)([\d,]+)(.*)$/.exec(b.textContent.trim());
+    if (!m) return;
+    const target = parseInt(m[2].replace(/,/g, ''), 10);
+    if (!Number.isFinite(target)) return;
+    if (reduced) return;                       // already shows the final value
+    const t0 = performance.now(), dur = 950;
+    const fmt = n => (m[2].includes(',') ? n.toLocaleString() : String(n));
+    const tick = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(2, -10 * k);      // easeOutExpo
+      b.textContent = m[1] + fmt(Math.round(target * e)) + m[3];
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    b.textContent = m[1] + fmt(0) + m[3];
+    requestAnimationFrame(tick);
+  });
+}
 
 routes['/auth'] = {
   title: 'Welcome', public: true,
@@ -60,6 +83,7 @@ routes['/auth'] = {
     } }, 'Forgot password?');
     node.style.paddingBottom = '0';
     node.classList.add('landing');
+    const aurora = h('canvas', { class: 'aurora', 'aria-hidden': 'true' });
     const goSignup = () => { setMode('signup'); const c = document.querySelector('.auth-card'); c && c.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => emailF.focus({ preventScroll: true }), 350); };
     const scrollTo = (sel) => () => document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     node.append(h('nav', { class: 'lp-nav', 'data-stag': '' },
@@ -72,6 +96,7 @@ routes['/auth'] = {
       h('button', { class: 'btn primary sm', onclick: goSignup }, icon('spark'), 'Sign up free')));
     node.append(h('div', { class: 'authwrap', 'data-stag': '' },
       h('div', { class: 'auth-hero' },
+        aurora,
         h('span', { class: 'lp-eyebrow' }, icon('spark'), 'Reachmark Digital · worldwide voice infrastructure'),
         h('h1', {}, 'Studio-grade AI voice, ', h('span', { class: 'grad' }, 'indistinguishable from humans.')),
         h('p', { class: 'muted' }, 'Reachmark Audio turns text into human-grade speech in 40+ languages — clone, design, dub, lip-sync and call with voices that are yours. One professional platform, every language.'),
@@ -82,7 +107,11 @@ routes['/auth'] = {
           ['10,000 credits on signup', '40+ languages & accents', '10-second voice clone', 'No card required'].map(t => h('span', {}, icon('check'), t))),
         h('div', { class: 'lp-stats' },
           [['6', 'studios'], ['40+', 'languages'], ['10 s', 'voice clone'], ['10,000', 'free credits']].map(([v, l]) => h('div', {}, h('b', {}, v), h('span', {}, l)))),
-        h('div', { class: 'lp-chips' }, ['Voiceovers', 'Dubbing', 'Lip sync', 'Characters', 'Translation', 'Voice changing'].map(t => h('span', {}, t))),
+        (() => {
+          const chips = ['Voiceovers', 'Dubbing', 'Lip sync', 'Characters', 'Translation', 'Voice changing'];
+          const grp = hidden => h('div', { class: 'marq-grp', ...(hidden ? { 'aria-hidden': 'true' } : {}) }, chips.map(t => h('span', {}, t)));
+          return h('div', { class: 'lp-chips' }, h('div', { class: 'marq-track' }, grp(false), grp(true)));
+        })(),
         h('div', { class: 'bars' }, [0, 1, 2, 3, 4, 5, 6].map((i) => h('i', { style: { height: 8 + (i % 4) * 6 + 'px', animationDelay: i * 0.1 + 's' } })))),
       h('div', { class: 'auth-card card' },
         head, tabs, form, forgot,
@@ -126,6 +155,8 @@ routes['/auth'] = {
         h('div', { class: 'fbot' },
           h('div', { class: 'brand' }, h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: '' })), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))),
           h('span', {}, '© 2026 Reachmark Digital · Worldwide voice infrastructure'))));
+    mountAurora(aurora);   // self-managing: pauses offscreen, removes itself without WebGL
+    animateStats(node);
   },
 };
 
