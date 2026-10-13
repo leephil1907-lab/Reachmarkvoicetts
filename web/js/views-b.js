@@ -387,7 +387,7 @@ routes['/support'] = {
       ['How does voice translation work?', 'Your voice character (pitch, pace, colour) is stored as a profile. In Text to Speech, pick an output language — English, French, Spanish or German — and the same character performs in that language.'],
       ['What do credits cover?', 'New accounts get 10,000 credits. TTS ≈ 1 per 40 characters, voice change 20, Voice Match 150, Quick Vocal Remove 30, dubbing 15 per take. Failed renders refund automatically. Your balance is in the top bar.'],
       ['What is Quick Vocal Remove?', 'A center-channel reduction for stereo mixes: it extracts a centered-vocal bus and a karaoke bus. Best on mixes with centered lead vocals; a Demucs-class engine plugs into the same endpoint when attached.'],
-      ['Can I use renders commercially?', 'Free plan renders are for evaluation. The Plus plan (Account → Upgrade, one 7-day trial per account) includes commercial use, 200 minutes and 10 voice slots.'],
+      ['Can I use renders commercially?', 'Free plan renders are for evaluation. The Plus plan includes commercial use, 200 minutes and 10 voice slots — request it from Account: our team emails a secure payment link and a staff member switches Plus on after payment is confirmed. No cards are ever stored or auto-charged.'],
       ['My microphone is blocked.', 'Browsers require permission per site. Allow microphone in site settings, then retry — or upload an audio file instead (20 MB max); every studio accepts uploads.'],
     ];
     const faqBox = h('div', { class: 'stack', style: { gap: '8px' } });
@@ -552,7 +552,7 @@ routes['/terms'] = {
       ['2. Accounts & credits', [
         'You must provide a valid email address and keep your password confidential. New accounts receive 10,000 credits; credits are a licence to consume compute, not money, and are non-transferable and non-refundable to cash.',
         'Charges are applied server-side before rendering and refunded automatically and in full if a render fails. Current costs are shown in-app (Support Center → FAQs and Site announcements).',
-        'The Plus plan includes one 7-day trial per account, enforced server-side. Trials convert to Free automatically at expiry — we never charge a card silently, because we do not hold cards.',
+        'Plus upgrades are request-based and staff-approved: you ask from your account, we email a secure payment link or invoice, and a human activates the plan after payment is confirmed. Reachmark Audio never stores card details, never self-approves and never auto-charges. Evaluation trials are granted individually by staff and expire server-side.',
       ]],
       ['3. Acceptable use', [
         'You may not: clone or synthesize a real person\'s voice without their consent; generate unlawful, defamatory, harassing or deceptive content; impersonate individuals or institutions; resell the Service; probe, overload or reverse-engineer the infrastructure; or use support channels for abuse.',
@@ -638,17 +638,36 @@ routes['/account'] = {
           h('div', { class: 'art' }, h('span', { class: 'tag' }, u.trialEnds ? 'Plus trial · ' + trialDays + ' days left' : 'Plus active'), h('h3', {}, 'You are creating without limits')),
           h('div', { class: 'body' }, ...['200 minutes generation', 'Voice Design access', '10 private voice slots', 'Commercial use allowed'].map(t => h('div', { class: 'perk' }, icon('check'), t))))
       : h('div', { class: 'upcard' },
-          h('div', { class: 'art' }, h('span', { class: 'tag' }, 'Upgrade to Plus'), h('h3', {}, 'Unleash your creativity')),
+          h('div', { class: 'art' }, h('span', { class: 'tag' }, u?.upgradeReq ? 'Request pending' : 'Upgrade to Plus'), h('h3', {}, u?.upgradeReq ? 'Our team is on it' : 'Unleash your creativity')),
           h('div', { class: 'body' },
             ...['Up to 200 minutes generation', 'Access to Voice Design', '10 private voice slots', 'Commercial use allowed'].map(t => h('div', { class: 'perk' }, icon('check'), t)),
-            h('button', { class: 'btn primary block', style: { marginTop: '12px' }, onclick: () => modal('Upgrade to Plus', (box, close) => box.append(
-              h('p', { class: 'muted' }, 'Plus includes 200 minutes of generation, 10 private voice slots, priority Voice Design and commercial licensing worldwide.'),
-              h('div', { class: 'stack', style: { marginTop: '12px' } },
-                h('button', { class: 'btn lime block', onclick: async () => {
-                  try { await api('/api/plan/trial', { method: 'POST' }); await syncUser(); close(); toast('Plus trial started · 7 days', 'spark'); navigate('/account'); }
-                  catch (e) { toast(e.message, 'close'); }
-                } }, icon('spark'), 'Start 7-day Plus trial'),
-                h('button', { class: 'btn block', onclick: () => location.href = 'mailto:support@reachmarkdigital.com?subject=Reachmark%20Audio%20Plus' }, icon('mail'), 'Contact sales')))), }, 'Upgrade')));
+            u?.upgradeReq
+              ? h('div', { class: 'pend' },
+                  h('b', {}, 'Upgrade request pending'),
+                  h('small', {}, 'Payment: ' + (u.upgradeReq.method === 'bank' ? 'bank transfer / invoice' : 'card payment link by email') + '. A human from Reachmark Digital emails you a secure payment link — your plan is switched on manually after payment is confirmed. We never store card details.'),
+                  h('button', { class: 'btn sm', onclick: () => modal('Withdraw request', (box, close) => box.append(
+                    h('p', { class: 'muted' }, 'Withdraw your Plus upgrade request? You can request again any time.'),
+                    h('button', { class: 'btn danger block', style: { marginTop: '12px' }, onclick: async () => {
+                      try { await api('/api/upgrade/cancel', { method: 'POST' }); await syncUser(); close(); toast('Upgrade request withdrawn', 'close'); navigate('/account'); }
+                      catch (e) { toast(e.message, 'close'); }
+                    } }, icon('close'), 'Withdraw request'))) }, icon('close'), 'Withdraw request'))
+              : h('button', { class: 'btn primary block', style: { marginTop: '12px' }, onclick: () => {
+                  let method = 'card';
+                  const optCard = h('button', { class: 'btn block on', onclick: () => { method = 'card'; optCard.classList.add('on'); optBank.classList.remove('on'); } }, icon('spark'), 'Card payment link by email');
+                  const optBank = h('button', { class: 'btn block', onclick: () => { method = 'bank'; optBank.classList.add('on'); optCard.classList.remove('on'); } }, icon('doc'), 'Bank transfer / invoice');
+                  const note = h('input', { class: 'input', placeholder: 'Note for our team (optional)', maxLength: 300 });
+                  modal('Upgrade to Plus', (box, close) => box.append(
+                    h('p', { class: 'muted' }, 'Plus includes 200 minutes of generation, 10 private voice slots, priority Voice Design and commercial licensing worldwide.'),
+                    h('label', { class: 'fld', style: { marginTop: '12px' } }, 'How would you like to pay?'),
+                    h('div', { class: 'stack', style: { gap: '8px' } }, optCard, optBank),
+                    h('label', { class: 'fld', style: { marginTop: '12px' } }, 'Note (optional)'), note,
+                    h('p', { class: 'tiny faint', style: { margin: '12px 0 0' } }, 'No card details are entered or stored in Reachmark Audio. Our team emails you a secure payment link or invoice; a staff member switches your plan on manually after payment is confirmed. Upgrades are never self-approved.'),
+                    h('button', { class: 'btn primary block', style: { marginTop: '14px' }, onclick: async e => {
+                      e.currentTarget.disabled = true;
+                      try { await api('/api/upgrade/request', { method: 'POST', body: { method, note: note.value.trim() } }); await syncUser(); close(); toast('Request sent — watch your inbox for the payment link', 'mail'); navigate('/account'); }
+                      catch (e2) { toast(e2.message, 'close'); e.currentTarget.disabled = false; }
+                    } }, icon('send'), 'Send upgrade request')));
+                } }, icon('spark'), 'Request Plus upgrade')));
     const verCard = h('div', { class: 'card', style: { display: 'flex', gap: '12px', alignItems: 'center' } },
       h('span', { class: 'avatar', style: { background: u?.verified ? 'var(--lime)' : 'var(--orange)', color: '#171a09' } }, icon(u?.verified ? 'check' : 'mail')),
       h('div', { style: { flex: '1', minWidth: 0 } },
@@ -689,7 +708,7 @@ routes['/account'] = {
       pushCard,
       h('div', { class: 'procard' },
         h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center' } },
-          h('span', { html: `<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#cff05a"/><circle cx="32" cy="32" r="30" fill="none" stroke="#f4f1e9" stroke-width="3"/><text x="32" y="43" font-size="34" font-weight="900" text-anchor="middle" fill="#151310" font-family="system-ui">R</text><circle cx="47" cy="17" r="4" fill="#151310"/></svg>` }),
+          h('span', { class: 'avatar', style: { width: '64px', height: '64px', fontSize: '26px' } }, (u?.name || u?.email || '?')[0].toUpperCase()),
           h('div', { style: { minWidth: 0 } }, h('b', { style: { fontSize: '19px' } }, u?.name), h('small', { class: 'muted', style: { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' } }, u?.email))),
         h('div', { class: 'inner' },
           h('span', {}, 'My Team'), h('span', { class: 'badge' }, u?.plan === 'plus' ? 'Plus' : 'Free'),
@@ -705,7 +724,7 @@ routes['/account'] = {
       h('div', { class: 'row tap', onclick: () => modal('Terms of Service', b => b.append(h('p', { class: 'muted tiny' }, 'Reachmark Audio. Generated voices are for your licensed use; clone only voices you have rights to. GPU engine adapters (RTVC, MockingBird, ChatterBox) activate when torch runtimes are present. Support: support@reachmarkdigital.com.'))) }, h('div', { class: 'r-ico' }, icon('doc')), h('div', {}, h('b', {}, 'Terms of Service')), h('div', { class: 'r-end' }, icon('chevron'))),
       h('div', { style: { height: '18px' } }),
       h('button', { class: 'btn danger block', onclick: async () => { const { logout } = await import('./core.js'); logout(); } }, icon('logout'), 'Log out'),
-      h('div', { class: 'center faint tiny', style: { padding: '22px 0' } }, 'Reachmark Audio 1.1 · Worldwide', h('br'), 'reachmarkofficial@gmail.com · support@reachmarkdigital.com')));
+      h('div', { class: 'center faint tiny', style: { padding: '22px 0' } }, 'Reachmark Audio 1.3 · Worldwide', h('br'), 'reachmarkofficial@gmail.com · support@reachmarkdigital.com')));
   },
 };
 

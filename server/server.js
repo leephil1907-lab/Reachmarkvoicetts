@@ -149,7 +149,7 @@ function startSession(res, uid, secure) {
   store.sessions.add(token, uid, Date.now() + 30 * 864e5);
   return `rm=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 86400}${secure ? '; Secure' : ''}`;
 }
-const pubUser = u => ({ id: u.id, name: u.name, email: u.email, credits: u.credits, plan: u.plan, minutes: Math.round(u.minutes * 10) / 10, trialEnds: u.trial_ends || null, created: u.created, verified: !!u.email_verified });
+const pubUser = u => ({ id: u.id, name: u.name, email: u.email, credits: u.credits, plan: u.plan, minutes: Math.round(u.minutes * 10) / 10, trialEnds: u.trial_ends || null, created: u.created, verified: !!u.email_verified, upgradeReq: store.upgradeReq.get(u.id) });
 /* email verification: single 24h window carrying BOTH a link token and a 6-digit code */
 function issueVerification(u) {
   const token = crypto.randomBytes(24).toString('hex');
@@ -214,6 +214,7 @@ const server = http.createServer(async (req, res) => {
       flags: store.config.flags(), costs: store.config.costs(),
       default_voice: store.config.get('default_voice'),
       engines: { elevenlabs: el.configured(), llm: llm.configured(), llmProvider: llm.provider() },
+      mail: mail.configured(),
     });
 
     if (p === '/api/auth/signup' && req.method === 'POST') {
@@ -346,12 +347,28 @@ const server = http.createServer(async (req, res) => {
       return json(res, 503, { error: 'Reachmark Audio is under maintenance — please try again shortly.' });
 
     if (p === '/api/me') return json(res, 200, { user: pubUser(user) });
-    if (p === '/api/plan/trial' && req.method === 'POST') {
-      if (user.trial_used) return json(res, 409, { error: 'The free Plus trial has already been used on this account.' });
-      user.plan = 'plus'; user.trial_used = 1; user.trial_ends = Date.now() + 7 * 864e5;
-      store.users.save(user);
-      return json(res, 200, { user: pubUser(user) });
+    /* ---- Plus upgrades: request → staff approval. NEVER self-service. ---- */
+    if (p === '/api/upgrade/request' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e6));
+      if (user.plan === 'plus') return json(res, 409, { error: 'This account is already on Plus.' });
+      if (store.upgradeReq.get(uid)) return json(res, 409, { error: 'You already have an upgrade request pending — our team will email you shortly.' });
+      if (!store.rateLimit('upgrade:' + uid, 3, 3600000)) return json(res, 429, { error: 'Too many upgrade requests — try again later.' });
+      const method = oneOf(str(b.method, 8), ['card', 'bank'], 'card');
+      const note = str(b.note, 300) || '';
+      const request = store.upgradeReq.set(uid, { method, note, at: Date.now() });
+      const t = store.support.threadForUser(uid) || store.support.createThread(uid, 'Plus upgrade request');
+      store.support.addMessage(t.id, 'user', 'Upgrade request opened · payment: ' + (method === 'bank' ? 'bank transfer / invoice' : 'card payment link by email') + (note ? ' · note: ' + note : ''));
+      mail.send({ to: process.env.SUPPORT_EMAIL || 'support@reachmarkdigital.com', ...tpl.upgradeRequest({ name: user.name, email: user.email, method, note }) }).catch(() => {});
+      return json(res, 202, { request, message: 'Request received — a human from Reachmark Digital will email you a secure payment link. Nothing is charged here.' }, creditHeader(user));
     }
+    if (p === '/api/upgrade/cancel' && req.method === 'POST') {
+      if (!store.upgradeReq.get(uid)) return json(res, 404, { error: 'No pending upgrade request on this account.' });
+      store.upgradeReq.del(uid);
+      const t = store.support.threadForUser(uid);
+      if (t) store.support.addMessage(t.id, 'user', 'Upgrade request withdrawn by the user.');
+      return json(res, 200, { ok: true }, creditHeader(user));
+    }
+
     if (p === '/api/models') return json(res, 200, { models: tts.catalog() });
     if (p === '/api/push/vapid') return json(res, 200, { publicKey: pushlib.publicKey() });
     if (p === '/api/push/state') return json(res, 200, { count: store.pushSubs.forUser(uid).length });

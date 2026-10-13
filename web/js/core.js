@@ -89,7 +89,7 @@ export function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
 export const uid = p => (p || 'id') + '_' + Math.random().toString(36).slice(2, 9);
 
 /* ---------------- session + cloud db ---------------- */
-export const db = { user: null, voices: [], agents: [], history: [], engines: {} };
+export const db = { user: null, voices: [], agents: [], history: [], engines: {}, mail: false };
 export async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: opts.body ? { 'content-type': 'application/json' } : {},
@@ -323,7 +323,9 @@ if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motio
 /* ---------- email verification: banner + sheet (link or 6-digit code) ---------- */
 export function verifySheet() {
   const codeIn = h('input', { class: 'input', placeholder: '6-digit code', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code' });
-  const msg = h('p', { class: 'tiny muted', style: { margin: '0 0 10px' } }, 'We emailed a verification link and a 6-digit code to ', h('b', {}, db.user?.email || ''), '. Paste the code, or open the link on any device — both work.');
+  const msg = db.mail
+    ? h('p', { class: 'tiny muted', style: { margin: '0 0 10px' } }, 'We emailed a verification link and a 6-digit code to ', h('b', {}, db.user?.email || ''), '. Paste the code, or open the link on any device — both work.')
+    : h('p', { class: 'tiny muted', style: { margin: '0 0 10px' } }, 'Heads up: email delivery is not connected on this server yet, so no message reached ', h('b', {}, db.user?.email || ''), ' this time. Your account works fully — to verify, write to support@reachmarkdigital.com and a human will confirm you, or try again once the operator connects mail.');
   sheet('Verify your email', (box, close) => {
     box.append(msg, codeIn,
       h('div', { style: { display: 'flex', gap: '8px', marginTop: '14px' } },
@@ -368,7 +370,7 @@ export function refreshVerifyBanner() {
   if (!db.user || db.user.verified) { if (b) b.remove(); return; }
   if (b) return;
   b = h('div', { id: 'verify-banner', class: 'verify-banner', role: 'status' },
-    h('span', { style: { flex: '1', minWidth: '0', display: 'flex', gap: '9px', alignItems: 'center' } }, icon('mail'), h('span', {}, h('b', {}, 'Verify your email'), h('span', { class: 'hide-sm' }, ' — a link and a 6-digit code are waiting in ' + db.user.email + '.'))),
+    h('span', { style: { flex: '1', minWidth: '0', display: 'flex', gap: '9px', alignItems: 'center' } }, icon('mail'), h('span', {}, h('b', {}, db.mail ? 'Verify your email' : 'Email delivery is off on this server'), h('span', { class: 'hide-sm' }, db.mail ? ' — a link and a 6-digit code are waiting in ' + db.user.email + '.' : ' — verification is handled by our support team until mail is connected.'))),
     h('button', { class: 'btn sm primary', onclick: () => verifySheet() }, icon('mail'), 'Verify now'),
     h('button', { class: 'iconbtn', 'aria-label': 'Dismiss verification banner', html: icons.close, onclick: () => b.remove() }));
   main.insertBefore(b, main.firstElementChild);

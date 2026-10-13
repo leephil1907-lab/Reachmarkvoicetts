@@ -188,6 +188,15 @@ const support = {
   unreadAdmin: () => db.prepare('SELECT SUM(unreadByAdmin) c FROM support_threads WHERE status != \'closed\'').get().c || 0,
 };
 
+/* ---------- plus upgrade requests (staff-approved only) ---------- */
+db.exec('CREATE TABLE IF NOT EXISTS upgrade_requests (uid TEXT PRIMARY KEY, method TEXT NOT NULL, note TEXT, at INTEGER NOT NULL)');
+const upgradeReq = {
+  get: uid => { const r = db.prepare('SELECT * FROM upgrade_requests WHERE uid = ?').get(uid); return r ? { ...r, status: 'pending' } : null; },
+  set: (uid, r) => { db.prepare('INSERT OR REPLACE INTO upgrade_requests (uid,method,note,at) VALUES (?,?,?,?)').run(uid, r.method, String(r.note || '').slice(0, 300), r.at || Date.now()); return upgradeReq.get(uid); },
+  del: uid => db.prepare('DELETE FROM upgrade_requests WHERE uid = ?').run(uid),
+  list: () => db.prepare('SELECT * FROM upgrade_requests ORDER BY at ASC').all().map(r => ({ ...r, status: 'pending' })),
+};
+
 /* ---------- push subscriptions ---------- */
 db.exec('CREATE TABLE IF NOT EXISTS push_subscriptions (endpoint TEXT PRIMARY KEY, uid TEXT, keys TEXT NOT NULL, created INTEGER)');
 const pushSubs = {
@@ -213,4 +222,4 @@ const config = {
   flags() { try { return JSON.parse(config.get('flags')); } catch { return JSON.parse(DEFAULT_CONFIG.flags); } },
 };
 
-module.exports = { db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config, pushSubs };
+module.exports = { db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config, pushSubs, upgradeReq };

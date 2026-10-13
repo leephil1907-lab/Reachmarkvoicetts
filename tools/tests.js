@@ -240,6 +240,40 @@ async function waitUp(url, tries = 60) {
     const clEng = (r.j.engines || []).find(e => e.id === 'anthropic');
     ok('Engine Hub lists elevenlabs + anthropic as standby', !!elEng && !!clEng && elEng.state === 'standby' && clEng.state === 'standby');
 
+    /* ---------- 5c. plus upgrades: request -> staff approval (never self-service) ---------- */
+    group('Plus upgrades are staff-approved only');
+    r = await pub('GET', '/api/config');
+    ok('config exposes honest mail flag', typeof r.j.mail === 'boolean' && r.j.mail === false);
+    r = await pub('POST', '/api/plan/trial', {});
+    ok('old self-approve trial endpoint is gone (404)', r.status === 404);
+    const uidMe = (await pub('GET', '/api/auth/me')).j.user.id;
+    r = await pub('POST', '/api/upgrade/request', { method: 'card', note: 'For my studio' });
+    ok('upgrade request -> 202 pending', r.status === 202 && r.j.request.status === 'pending');
+    let meU = (await pub('GET', '/api/auth/me')).j.user;
+    ok('plan stays free while pending', meU.plan === 'free' && meU.upgradeReq.status === 'pending');
+    r = await pub('POST', '/api/upgrade/request', { method: 'bank' });
+    ok('duplicate request -> 409', r.status === 409);
+    r = await adm('GET', '/api/upgrades');
+    const qRow = (r.j.upgrades || []).find(x => x.id === uidMe);
+    ok('admin queue lists the request', r.status === 200 && !!qRow && qRow.method === 'card');
+    r = await adm('POST', '/api/upgrades/approve', { id: uidMe, reason: 'payment ref RM-1' }, { 'X-CSRF-Token': csrf });
+    ok('admin approve -> 200 plus', r.status === 200 && r.j.plan === 'plus');
+    meU = (await pub('GET', '/api/auth/me')).j.user;
+    ok('plan flipped to plus + request cleared', meU.plan === 'plus' && !meU.upgradeReq);
+    await sleep(250);
+    ok('approval email reached the user', /Plus plan is now active/.test(outbox()));
+    const audUp = (await adm('GET', '/api/audit?action=upgrade.approve&limit=10')).j.rows;
+    ok('approval is audit-logged', audUp.some(a => a.action === 'upgrade.approve'));
+    await adm('POST', '/api/user/plan', { id: uidMe, plan: 'free' }, { 'X-CSRF-Token': csrf });
+    r = await pub('POST', '/api/upgrade/request', { method: 'bank' });
+    ok('re-request after revert -> 202', r.status === 202);
+    r = await pub('POST', '/api/upgrade/cancel', {});
+    ok('user can withdraw the request', r.status === 200);
+    r = await pub('POST', '/api/upgrade/cancel', {});
+    ok('withdrawing twice -> 404', r.status === 404);
+    meU = (await pub('GET', '/api/auth/me')).j.user;
+    ok('account back to free, nothing pending', meU.plan === 'free' && !meU.upgradeReq);
+
     /* ---------- 6. support roundtrip < 2s ---------- */
     group('Live support roundtrip (<2s each way)');
     let t0 = Date.now();

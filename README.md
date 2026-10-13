@@ -34,7 +34,7 @@ Built for **worldwide use**: accounts, voice translation across languages, and s
   admin seeded **only** from `ADMIN_EMAIL` + `ADMIN_PASSWORD` env, **mandatory TOTP 2FA**,
   separate `rm_admin` cookie (HttpOnly, SameSite=Strict, Secure on HTTPS, 8 h), lockout after
   5 failures, optional `ADMIN_IP_ALLOWLIST`, CSRF token on every state-changing call, strict
-  CSP + `X-Robots-Tag: noindex`. Pages: Dashboard · Users (credits/plan/trial/suspend/force
+  CSP + `X-Robots-Tag: noindex`. Pages: Dashboard · Users (credits/plan/upgrades/suspend/force
   logout/delete — never exposes hashes or tokens) · Support inbox · Studio workspace (no credit
   charges) · Site control (maintenance, announcement, signups, costs, signup credits, flags) ·
   Agents & voices moderation · Audit log · Admins. **Every admin write is audit-logged**
@@ -64,7 +64,7 @@ Built for **worldwide use**: accounts, voice translation across languages, and s
 - **Sign up** grants **10,000 ✦ credits** instantly.
 - Scrypt-hashed passwords (async, constant-time compare), 30-day HttpOnly cookies (`Secure` behind HTTPS), rate-limited login/signup (5 per 15 min per IP+email), 8+ char passwords.
 - **Server-side billing with atomic refunds**: any failed render refunds the exact charge. TTS ≈ 1 ✦ / 40 chars · voice change 20 ✦ · Voice Match 150 ✦ · Quick Vocal Remove 30 ✦ · dubbing 15 ✦ / take.
-- **Plus**: one 7-day trial per account (`trialUsed` enforced server-side, expiry checked on every request). Sales: support@reachmarkdigital.com.
+- **Plus**: manual, staff-approved upgrades only — the user sends an upgrade request (card payment link or bank invoice), staff approve from the admin Upgrade queue (audit-logged, user emailed); plans never self-approve and no card data is ever stored. Staff can grant evaluation trials per account.
 - Storage: **SQLite** (better-sqlite3) in `DATA_DIR` (env-configurable for persistent disks).
 
 ## Run it
@@ -189,7 +189,7 @@ The Docker image installs python3 + `piper-tts`; the entrypoint downloads voices
 | Discover Voices | `#/discover` | Worldwide catalogue → My Voices |
 | Support Center | `#/support` | Live chat + support session with the **Reachmark Guide**, FAQ, emails |
 | Engine Hub | `#/engines` | Live status of every merged engine |
-| Account | `#/account` | Profile, credits, Plus trial, appearance, language, terms, logout |
+| Account | `#/account` | Profile, credits, Plus upgrade request, appearance, language, terms, logout |
 
 **Platform Guide**: every account ships with an AI assistant agent that knows every studio,
 price and shortcut — chat or call it from the Support Center or the life-buoy button.

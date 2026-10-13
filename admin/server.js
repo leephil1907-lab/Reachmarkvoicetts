@@ -248,6 +248,31 @@ const server = http.createServer(async (req, res) => {
         store.users.save(t); log('plan.change', t.email, { plan: t.plan });
         return json(res, 200, { ok: true, plan: t.plan });
       }
+      if (p === '/api/upgrades' && req.method === 'GET') {
+        const rows = store.upgradeReq.list().map(r => {
+          const u = store.users.byId(r.uid); if (!u) return null;
+          return { id: u.id, name: u.name, email: u.email, method: r.method, note: r.note || '', at: r.at, credits: u.credits };
+        }).filter(Boolean);
+        return json(res, 200, { upgrades: rows });
+      }
+      if ((p === '/api/upgrades/approve' || p === '/api/upgrades/deny') && req.method === 'POST') {
+        if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
+        const b = await body(1e5);
+        const t = store.users.byId(String(b.id || '')); if (!t) return json(res, 404, { error: 'User not found.' });
+        if (!store.upgradeReq.get(t.id)) return json(res, 409, { error: 'No pending upgrade request for this user.' });
+        const reason = String(b.reason || '').slice(0, 300);
+        if (p.endsWith('/approve')) {
+          t.plan = 'plus'; t.trial_ends = null;
+          store.upgradeReq.del(t.id);
+          store.users.save(t); log('upgrade.approve', t.email, { reason });
+          mail.send({ to: t.email, ...tpl.upgradeApproved({ name: t.name, plan: 'Plus' }) }).catch(() => {});
+          return json(res, 200, { ok: true, plan: 'plus' });
+        }
+        store.upgradeReq.del(t.id);
+        store.users.save(t); log('upgrade.deny', t.email, { reason });
+        mail.send({ to: t.email, ...tpl.upgradeDenied({ name: t.name, reason }) }).catch(() => {});
+        return json(res, 200, { ok: true });
+      }
       if (p === '/api/user/trial' && req.method === 'POST') {
         if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
         const b = await body(1e5);

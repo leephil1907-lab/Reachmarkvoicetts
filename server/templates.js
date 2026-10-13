@@ -161,4 +161,38 @@ function adminOfflineReply({ adminEmail, threadId, userEmail, replyText }) {
   return { subject, html, text };
 }
 
-module.exports = { COMPANY, CONTACT, SUPPORT, welcome, passwordReset, passwordChanged, supportReply, suspended, reinstated, adminThreadNotice, adminOfflineReply, verifyEmail, verifiedNotice };
+/* ---------- Plus upgrade (manual, staff-approved — never self-service) ---------- */
+function upgradeRequest({ name, email, method, note, url }) {
+  return {
+    subject: 'Plus upgrade requested — ' + email,
+    html: wrap('Upgrade request', h1('New Plus upgrade request') +
+      p('<b>' + name + '</b> (' + email + ') requested the Plus plan.') +
+      p('Preferred payment: <b>' + (method === 'bank' ? 'Bank transfer / invoice' : 'Card payment link by email') + '</b>.') +
+      (note ? p('Note from the user: ' + note) : '') +
+      p('Approve or deny from the admin control room (Upgrades queue). The plan changes only after a staff member confirms payment — Reachmark Audio never self-approves upgrades and never stores card details.'),
+      'A user requested the Plus plan.'),
+    text: 'Plus upgrade request\nUser: ' + name + ' <' + email + '>\nPayment: ' + (method === 'bank' ? 'Bank transfer / invoice' : 'Card payment link by email') + (note ? '\nNote: ' + note : '') + '\nAction: approve or deny in the admin control room. No card data is stored by Reachmark Audio.',
+  };
+}
+function upgradeApproved({ name, plan }) {
+  return {
+    subject: 'Your Reachmark Audio ' + plan + ' plan is active',
+    html: wrap('Plan active', h1('Welcome to Plus, ' + name + ' 🎉') +
+      p('Our team confirmed your payment and manually activated your <b>Plus</b> plan: 200 minutes of generation, 10 private voice slots, priority Voice Design and commercial licensing, worldwide.') +
+      p('Open the app and create — everything is unlocked on your next visit.'),
+      'Your Plus plan is active.'),
+    text: 'Hi ' + name + ' — payment confirmed, your Plus plan is now active: 200 minutes, 10 voice slots, priority Voice Design, commercial use. Thank you for creating with Reachmark Audio.',
+  };
+}
+function upgradeDenied({ name, reason }) {
+  return {
+    subject: 'About your Reachmark Audio upgrade request',
+    html: wrap('Upgrade request', h1('Your upgrade request') +
+      p('Hi ' + name + ', we could not activate Plus on this request.' + (reason ? ' Reason: ' + reason : '')) +
+      p('Reply to this email or write to ' + SUPPORT + ' and a human will sort it out with you — no forms, no bots.'),
+      'Your upgrade request needs attention.'),
+    text: 'Hi ' + name + ', we could not activate Plus on this request.' + (reason ? ' Reason: ' + reason : '') + ' Write to ' + SUPPORT + ' and we will sort it out with you.',
+  };
+}
+
+module.exports = { COMPANY, CONTACT, SUPPORT, welcome, passwordReset, passwordChanged, supportReply, suspended, reinstated, adminThreadNotice, adminOfflineReply, verifyEmail, verifiedNotice, upgradeRequest, upgradeApproved, upgradeDenied };

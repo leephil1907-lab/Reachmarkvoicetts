@@ -115,14 +115,18 @@ function startLive() {
 function startPolling() {
   if (pollTimer) return;
   pollTimer = setInterval(async () => {
-    try { const j = await api('/api/support/threads'); setUnread(j.unread || 0); if (location.hash === '#/inbox') loadThreads(); $('#live-dot').className = 'led on'; }
+    try {
+      const j = await api('/api/support/threads'); setUnread(j.unread || 0); if (location.hash === '#/inbox') loadThreads(); $('#live-dot').className = 'led on';
+      const up = await api('/api/upgrades'); const n = (up.upgrades || []).length; const ub = $('#up-count');
+      if (ub) { ub.textContent = n; ub.classList.toggle('hidden', !n); }
+    }
     catch { $('#live-dot').className = 'led off'; }
   }, 5000);
 }
 function stopLive() { if (ES) { ES.close(); ES = null; } if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
 /* ---------------- router ---------------- */
-const PAGES = { dashboard: 'Dashboard', users: 'Users', inbox: 'Support inbox', studio: 'Studio workspace', site: 'Site control', docs: 'Agents & voices', audit: 'Audit log', admins: 'Admins' };
+const PAGES = { dashboard: 'Dashboard', users: 'Users', upgrades: 'Upgrade queue', inbox: 'Support inbox', studio: 'Studio workspace', site: 'Site control', docs: 'Agents & voices', audit: 'Audit log', admins: 'Admins' };
 window.addEventListener('hashchange', route);
 function route() {
   const page = (location.hash.replace('#/', '') || 'dashboard').split('?')[0];
@@ -281,6 +285,37 @@ async function openUser(id) {
 
 /* ---- support inbox ---- */
 let thrFilter = 'open', thrCache = [];
+/* ---- upgrade queue (manual approvals — the only way a plan changes) ---- */
+VIEWS.upgrades = async el => {
+  const j = await api('/api/upgrades');
+  const rows = j.upgrades || [];
+  el.innerHTML = `
+  <div class="panel"><h3>Pending Plus upgrade requests</h3>
+    <p class="dim tiny" style="margin:6px 0 12px">Reachmark Audio never self-approves upgrades and never stores card details. Confirm payment out-of-band (payment link or invoice you send), then approve here — every action is audit-logged and emails the user.</p>
+    ${rows.length ? `<table><tr><th>User</th><th>Payment</th><th>Note</th><th>Requested</th><th></th></tr>${rows.map(u => `
+      <tr data-uid="${esc(u.id)}">
+        <td><b>${esc(u.name)}</b><br><span class="dim tiny">${esc(u.email)}</span></td>
+        <td>${u.method === 'bank' ? 'Bank transfer / invoice' : 'Card payment link'}</td>
+        <td class="tiny">${esc(u.note || '—')}</td>
+        <td class="tiny dim">${new Date(u.at).toLocaleString()}</td>
+        <td style="white-space:nowrap">
+          <button class="btn sm ok" data-act="approve">Approve → Plus</button>
+          <button class="btn sm warn" data-act="deny">Deny</button>
+        </td>
+      </tr>`).join('')}</table>` : '<p class="dim">No pending requests. 🎉</p>'}
+  </div>`;
+  el.querySelectorAll('button[data-act]').forEach(b => b.onclick = async () => {
+    const tr = b.closest('tr'); const id = tr.dataset.uid; const act = b.dataset.act;
+    const reason = act === 'deny' ? (prompt('Reason shown to the user (optional):') || '') : (prompt('Payment reference / note for the audit log (optional):') || '');
+    b.disabled = true;
+    try {
+      await api(act === 'approve' ? '/api/upgrades/approve' : '/api/upgrades/deny', { method: 'POST', body: { id, reason } });
+      toast(act === 'approve' ? 'Plan set to Plus · user emailed' : 'Request denied · user emailed');
+      VIEWS.upgrades(el);
+    } catch (e) { toast(e.message); b.disabled = false; }
+  });
+};
+
 VIEWS.inbox = async el => {
   el.innerHTML = `
   <div class="toolbar">
