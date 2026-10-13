@@ -55,7 +55,7 @@ function voiceDoc(b) {
 }
 function agentDoc(b) {
   return {
-    name: str(b.name, 60), role: str(b.role, 120) || 'Reachmark assistant',
+    name: str(b.name, 60), role: str(b.role, 120) || 'Reachmark Audio assistant',
     persona: str(b.persona, 2000) || '', knowledge: arrStr(b.knowledge, 100, 300),
     greeting: str(b.greeting, 300) || 'Hi! How can I help?',
     voiceId: str(b.voiceId, 40) || null, model: str(b.model, 64) || null,
@@ -551,7 +551,7 @@ const server = http.createServer(async (req, res) => {
         let t = store.support.threadForUser(uid);
         if (!t) t = store.support.createThread(uid, str(b.subject, 60) || 'Support request');
         if (t.status !== 'open') store.support.updateThread(t.id, { status: 'open' });
-        const m = store.support.addMessage(t.id, 'bot', 'You are now connected to the Reachmark support team. They can see your plan and recent activity to help you faster.');
+        const m = store.support.addMessage(t.id, 'bot', 'You are now connected to the Reachmark Audio support team. They can see your plan and recent activity to help you faster.');
         store.support.updateThread(t.id, { lastMessageAt: m.createdAt, unreadByAdmin: (t.unreadByAdmin || 0) + 1 });
         mail.send({ to: SUPPORT_EMAIL, ...tpl.adminThreadNotice({ adminEmail: SUPPORT_EMAIL, threadId: t.id, userEmail: user.email, preview: (t.subject || '').slice(0, 200), url: ADMIN_URL }) }).catch(() => {});
         return json(res, 200, { thread: store.support.thread(t.id), message: m });

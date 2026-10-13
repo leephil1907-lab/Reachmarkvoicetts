@@ -1,6 +1,6 @@
 {
   "name": "Reachmark Audio",
-  "short_name": "Reachmark",
+  "short_name": "Reachmark Audio",
   "id": "/",
   "scope": "/",
   "start_url": "/",
@@ -54,7 +54,7 @@
   "tab_strip": { "new_tab_url": "/#/studio/tts" },
   "widgets": [
     {
-      "name": "Reachmark Quick Studio",
+      "name": "Reachmark Audio Studio",
       "description": "Jump straight into the Reachmark Audio studios and see live engine status.",
       "tag": "reachmark-quick-studio",
       "ms_ac_template": "/widget/quick-studio.ac.json",
@@ -62,7 +62,7 @@
       "type": "text/html",
       "update": 60,
       "screenshots": [
-        { "src": "/assets/widget-screenshot.png", "sizes": "600x400", "type": "image/png", "label": "Reachmark Quick Studio widget" }
+        { "src": "/assets/widget-screenshot.png", "sizes": "600x400", "type": "image/png", "label": "Reachmark Audio Studio widget" }
       ],
       "icons": [
         { "src": "/assets/icon-96.png", "sizes": "96x96", "type": "image/png" }

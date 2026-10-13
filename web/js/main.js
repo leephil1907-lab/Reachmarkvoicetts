@@ -16,10 +16,21 @@ document.body.append(splash);
 
 /* ---------- sidebar ---------- */
 const NAV = [
-  ['Studio', [['/studio/tts', 'text', 'Text to Speech'], ['/studio/changer', 'swap', 'Voice Changer'], ['/studio/clone', 'copy', 'Voice Match'], ['/studio/design', 'wand', 'Voice Design'], ['/studio/dub', 'globe', 'Dubbing Studio'], ['/studio/lip', 'film', 'Lip Sync Studio'], ['/studio/separate', 'separate', 'Quick Vocal Remove']]],
-  ['Explore', [['/discover', 'compass', 'Discover Voices'], ['/agents', 'bot', 'Character Agents']]],
-  ['Help', [['/support', 'lifebuoy', 'Support Center']]],
-  ['System', [['/engines', 'cpu', 'Engine Hub'], ['/account', 'user', 'Account']]],
+  ['Studio', [
+    ['/studio/tts', 'text', 'Text to Speech', 'Type it — any voice, any language'],
+    ['/studio/changer', 'swap', 'Voice Changer', 'Pitch, timbre & FX chains'],
+    ['/studio/clone', 'copy', 'Voice Match', 'Clone a voice from 10 seconds'],
+    ['/studio/design', 'wand', 'Voice Design', 'Design a voice from plain traits'],
+    ['/studio/dub', 'globe', 'Dubbing Studio', 'Translate & re-voice video'],
+    ['/studio/lip', 'film', 'Lip Sync Studio', 'Match speech to footage'],
+    ['/studio/separate', 'separate', 'Quick Vocal Remove', 'Strip vocals from stereo mixes']]],
+  ['Explore', [
+    ['/discover', 'compass', 'Discover Voices', 'Browse the shared voice library'],
+    ['/agents', 'bot', 'Character Agents', 'Personas that chat & call']]],
+  ['Help', [['/support', 'lifebuoy', 'Support Center', 'Live chat & support sessions']]],
+  ['System', [
+    ['/engines', 'cpu', 'Engine Hub', 'Engine status & merge map'],
+    ['/account', 'user', 'Account', 'Plan, credits & security']]],
 ];
 const sb = document.querySelector('#sidebar');
 sb.append(h('div', { class: 'brand' },
@@ -27,7 +38,7 @@ sb.append(h('div', { class: 'brand' },
   h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))));
 for (const [label, items] of NAV) {
   sb.append(h('div', { class: 'navlabel' }, label));
-  for (const [path, ic, name] of items) sb.append(h('button', { class: 'navitem', dataset: { path }, onclick: () => navigate(path) }, icon(ic), name));
+  for (const [path, ic, name, desc] of items) sb.append(h('button', { class: 'navitem', dataset: { path }, onclick: () => navigate(path) }, icon(ic), h('span', { class: 'nv-txt' }, h('b', {}, name), h('small', {}, desc))));
 }
 sb.append(h('div', { class: 'side-foot' },
   h('div', { class: 'card flat', style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '13px 15px' } },
@@ -175,3 +186,16 @@ if ('launchQueue' in window) {
     });
   } catch {}
 }
+
+/* ---------- fish-style descriptive drawer (mobile menu) ---------- */
+window.__menuSheet = () => sheet('Reachmark Audio', (box, close) => {
+  for (const [label, items] of NAV) {
+    box.append(h('div', { class: 'navlabel', style: { marginTop: '10px' } }, label));
+    for (const [path, ic, name, desc] of items) {
+      box.append(h('div', { class: 'row tap', onclick: () => { close(); setTimeout(() => navigate(path), 120); } },
+        h('div', { class: 'r-ico' }, icon(ic)),
+        h('div', {}, h('b', {}, name), h('small', {}, desc)),
+        h('div', { class: 'r-end' }, icon('chevron'))));
+    }
+  }
+});

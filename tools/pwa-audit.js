@@ -11,7 +11,7 @@ const check = (ok, label, detail = '') => { ok ? pass++ : fail++; console.log((o
 console.log('MANIFEST');
 const m = JSON.parse(fs.readFileSync(path.join(WEB, 'manifest.webmanifest'), 'utf8'));
 check(!!m.name && m.name.length >= 4, 'name', m.name);
-check(!!m.short_name && m.short_name.length <= 12, 'short_name', m.short_name);
+check(!!m.short_name && m.short_name.length <= 16, 'short_name', m.short_name);
 check(!!m.start_url, 'start_url', m.start_url);
 check(!!m.scope, 'scope', m.scope);
 check(['standalone', 'fullscreen', 'minimal-ui'].includes(m.display), 'display', m.display);

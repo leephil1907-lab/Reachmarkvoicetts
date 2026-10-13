@@ -11,6 +11,7 @@ routes['/auth'] = {
     const emailF = h('input', { class: 'input', placeholder: 'Email address', type: 'email', autocomplete: 'email' });
     const passF = h('input', { class: 'input', placeholder: 'Password (8+ characters)', type: 'password', autocomplete: mode === 'login' ? 'current-password' : 'new-password' });
     const submit = h('button', { class: 'btn primary block', type: 'submit' }, icon('spark'), 'Log in');
+    const head = h('h3', { class: 'auth-head' }, 'Log in to your account');
     const tabs = h('div', { class: 'authtabs' },
       h('button', { class: 'on', onclick: () => setMode('login') }, 'Log in'),
       h('button', { onclick: () => setMode('signup') }, 'Sign up'));
@@ -20,6 +21,7 @@ routes['/auth'] = {
       nameF.style.display = m === 'signup' ? '' : 'none';
       submit.replaceChildren(icon(m === 'signup' ? 'plus' : 'spark'), m === 'signup' ? 'Create account · get 10,000 ✦' : 'Log in');
       passF.autocomplete = m === 'login' ? 'current-password' : 'new-password';
+      head.textContent = m === 'signup' ? 'Create your account' : 'Log in to your account';
       err.hidden = true;
     }
     const form = h('form', { class: 'stack', onsubmit: async e => {
@@ -76,12 +78,14 @@ routes['/auth'] = {
         h('div', { class: 'lp-cta' },
           h('button', { class: 'btn primary lg', onclick: goSignup }, icon('spark'), 'Start free — 10,000 credits'),
           h('button', { class: 'btn ghost lg', onclick: scrollTo('#lp-studios') }, 'Explore the studios')),
+        h('div', { class: 'lp-checks' },
+          ['10,000 credits on signup', '40+ languages & accents', '10-second voice clone', 'No card required'].map(t => h('span', {}, icon('check'), t))),
         h('div', { class: 'lp-stats' },
           [['6', 'studios'], ['40+', 'languages'], ['10 s', 'voice clone'], ['10,000', 'free credits']].map(([v, l]) => h('div', {}, h('b', {}, v), h('span', {}, l)))),
         h('div', { class: 'lp-chips' }, ['Voiceovers', 'Dubbing', 'Lip sync', 'Characters', 'Translation', 'Voice changing'].map(t => h('span', {}, t))),
         h('div', { class: 'bars' }, [0, 1, 2, 3, 4, 5, 6].map((i) => h('i', { style: { height: 8 + (i % 4) * 6 + 'px', animationDelay: i * 0.1 + 's' } })))),
       h('div', { class: 'auth-card card' },
-        tabs, form, forgot,
+        head, tabs, form, forgot,
         h('div', { class: 'center tiny faint', style: { marginTop: '14px' } },
           'Need help? ', h('a', { href: 'mailto:support@reachmarkdigital.com', class: 'maillink' }, 'support@reachmarkdigital.com'), h('br'),
           h('a', { href: 'mailto:reachmarkofficial@gmail.com', class: 'maillink' }, 'reachmarkofficial@gmail.com'))),
@@ -96,11 +100,32 @@ routes['/auth'] = {
        ['bot', 'Character Agents', 'Agents built from your character bible that chat, act and call people in their own voice.']]
         .map(([ic, t, d]) => h('button', { class: 'lp-card', onclick: goSignup },
           h('span', { class: 'qi' }, icon(ic)), h('b', {}, t), h('p', {}, d), h('small', {}, 'Included free with your account')))),
-      h('footer', { class: 'lp-foot' },
-        h('div', { class: 'brand' }, h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: '' })), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))),
-        h('span', { style: { flex: '1' } }, '© 2026 Reachmark Digital · Worldwide voice infrastructure'),
-        h('a', { class: 'maillink', href: 'mailto:support@reachmarkdigital.com' }, 'support@reachmarkdigital.com'),
-        h('a', { class: 'maillink', href: 'mailto:reachmarkofficial@gmail.com' }, 'reachmarkofficial@gmail.com')));
+      h('section', { class: 'lp-faq', id: 'lp-faq' },
+        h('h2', {}, 'Frequently asked questions'),
+        ...[
+          ['What languages does Reachmark Audio support?', 'Neural text-to-speech and voice translation across 40+ languages and accents, including English, Spanish, French, German and Yoruba — with more models added as the engine library grows.'],
+          ['How does Voice Match cloning work?', 'Record or upload ten seconds of clean audio and Reachmark Audio matches and tunes the nearest neural voice to it. Only clone voices you have the rights to use.'],
+          ['Can I use generated audio commercially?', 'Yes. Voices you render are licensed for your commercial and personal use under the Terms of Service, on free and Plus plans alike.'],
+          ['What does it cost?', 'Signing up is free and adds 10,000 credits. Every studio shows its credit cost before you render, and a Plus trial unlocks unlimited-style creation.'],
+          ['Does it work as an installed app or offline?', 'Reachmark Audio installs as a PWA on desktop and mobile. The shell, your session and queued support messages work offline; studios stream from live engines when connected.'],
+          ['How do I reach a human?', 'Use live chat in the Support Center, or email support@reachmarkdigital.com / reachmarkofficial@gmail.com — real people at Reachmark Digital reply.'],
+        ].map(([q, a]) => h('details', {}, h('summary', {}, q), h('p', {}, a)))),
+      h('footer', { class: 'lp-foot2' },
+        h('div', { class: 'fcol' }, h('h4', {}, 'Studios'),
+          ...['Text to Speech', 'Voice Match', 'Voice Changer', 'Dubbing Studio', 'Lip Sync', 'Voice Design'].map(t => h('button', { onclick: goSignup }, t))),
+        h('div', { class: 'fcol' }, h('h4', {}, 'Company'),
+          h('button', { onclick: scrollTo('#lp-studios') }, 'Features'),
+          h('a', { href: 'mailto:reachmarkofficial@gmail.com' }, 'Reachmark Digital'),
+          h('button', { onclick: goSignup }, 'Pricing & credits')),
+        h('div', { class: 'fcol' }, h('h4', {}, 'Legal'),
+          h('button', { onclick: () => navigate('/terms') }, 'Terms of Service'),
+          h('button', { onclick: () => navigate('/privacy') }, 'Privacy Policy')),
+        h('div', { class: 'fcol' }, h('h4', {}, 'Contact'),
+          h('a', { href: 'mailto:support@reachmarkdigital.com' }, 'support@reachmarkdigital.com'),
+          h('a', { href: 'mailto:reachmarkofficial@gmail.com' }, 'reachmarkofficial@gmail.com')),
+        h('div', { class: 'fbot' },
+          h('div', { class: 'brand' }, h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: '' })), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))),
+          h('span', {}, '© 2026 Reachmark Digital · Worldwide voice infrastructure'))));
   },
 };
 

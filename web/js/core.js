@@ -48,6 +48,7 @@ export const icons = {
   cpu: I('<rect x="6" y="6" width="12" height="12" rx="3"/><rect x="10" y="10" width="4" height="4" rx="1"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2 2M19 5l-2 2M5 19l2-2M19 19l-2-2"/>'),
   check: I('<path d="m5 12.5 4.5 4.5L19 7"/>'),
   megaphone: I('<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'),
+  menu: I('<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>'),
   chevron: I('<path d="m9 5 7 7-7 7"/>'),
   chevD: I('<path d="m5 9 7 7 7-7"/>'),
   search: I('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
@@ -358,7 +359,7 @@ function chromeFor(route, path) {
     if (top.left) tb.append(top.left);
     else tb.append(h('div', { class: 'tb-title' }, top.title, top.sub ? h('small', {}, top.sub) : null), h('span', { class: 'spacer' }));
     (top.actions || []).forEach(a => tb.append(a));
-    if (db.user && top.noUser !== true) tb.append(userMenuBtn(38));
+    if (db.user && top.noUser !== true) tb.append(h('button', { class: 'iconbtn menubtn', 'aria-label': 'Menu', html: icons.menu, onclick: () => window.__menuSheet && window.__menuSheet() }), userMenuBtn(38));
   }
   const tabOf = route.tab;
   $$('#tabbar .tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tabOf));

@@ -180,7 +180,7 @@ routes['/studio/tts'] = {
   top: () => ({ back: true, title: 'Text to Speech', sub: 'Neural synthesis · voice translation' }),
   view: async ({ node }) => {
     const sel = { id: null, semitones: 0, rate: 1, fx: 'none', lang: 'auto' };
-    const ta = h('textarea', { class: 'ta', placeholder: 'Type anything… Reachmark speaks it in any voice you own, in any supported language.', maxlength: '2000' }, 'Welcome to Reachmark Audio — one engine, every voice, every language. Clone, design, dub, animate and call.');
+    const ta = h('textarea', { class: 'ta', placeholder: 'Type anything… Reachmark Audio speaks it in any voice you own, in any supported language.', maxlength: '2000' }, 'Welcome to Reachmark Audio — one engine, every voice, every language. Clone, design, dub, animate and call.');
     const count = h('span', { class: 'tiny faint' }, '');
     const upd = () => count.textContent = ta.value.length + ' / 2000';
     ta.addEventListener('input', upd); upd();
