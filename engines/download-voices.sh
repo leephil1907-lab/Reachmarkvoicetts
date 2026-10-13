@@ -10,7 +10,11 @@ for v in en/en_US/lessac/medium/en_US-lessac-medium \
          es/es_ES/davefx/medium/es_ES-davefx-medium \
          de/de_DE/thorsten/medium/de_DE-thorsten-medium; do
   f=$(basename "$v")
-  [ -f "$f.onnx" ]      || curl -L -o "$f.onnx"      "$base/$v.onnx"
-  [ -f "$f.onnx.json" ] || curl -L -o "$f.onnx.json" "$base/$v.onnx.json"
+  for a in 1 2 3; do
+    [ -f "$f.onnx" ]      && [ "$(stat -c%s "$f.onnx" 2>/dev/null || echo 0)" -gt 1000000 ] && break
+    curl -L --retry 3 --retry-all-errors --connect-timeout 20 -o "$f.onnx" "$base/$v.onnx" && [ "$(stat -c%s "$f.onnx" 2>/dev/null || echo 0)" -gt 1000000 ] && break
+    echo "retry $a for $f.onnx"; sleep $((a * 3))
+  done
+  [ -f "$f.onnx.json" ] || curl -L --retry 3 --retry-all-errors -o "$f.onnx.json" "$base/$v.onnx.json"
 done
 echo "✅ Voices installed in $dir"

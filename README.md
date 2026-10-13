@@ -275,9 +275,11 @@ notifications; admins send from Site control, every send audited), **background 
 (daily refresh of the public voice catalog for offline browsing).
 
 `tools/pwa-audit.js` mirrors all 46 PWABuilder manifest capabilities locally:
-**43/46 pass**. The three outstanding items each assert an external real-world artifact
-and are deliberately not fabricated:
+**42/46 pass**. The four outstanding items are deliberate, never fabricated:
 
 1. `related_applications` — needs a real native/store listing (add its Play/Store id once packaged).
 2. `iarc_rating_id` — a content-rating certificate issued during store onboarding (add the id when issued).
 3. `scope_extensions` — needs a second origin you control plus its well-known verification file.
+4. `tabbed_display` — intentionally NOT declared: `display_override` is `["standalone",
+   "window-controls-overlay"]` so an installed app never shows browser tab/URL chrome on
+   any device. Declaring `tabbed` would score a point and put the address bar back.

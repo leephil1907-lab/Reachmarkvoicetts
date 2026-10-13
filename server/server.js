@@ -683,4 +683,10 @@ const server = http.createServer(async (req, res) => {
 
 store.sessions.purge();
 const PORT = process.env.PORT || 8000;
+/* fetch neural voices at boot when the directory is empty (Railway volumes start blank) */
+if (process.env.PIPER_FETCH_ON_BOOT === '1' && !tts.catalog().length) {
+  const child = require('child_process').spawn(process.execPath, [path.join(__dirname, '..', 'scripts', 'fetch-voices.js')], { stdio: 'inherit' });
+  child.on('exit', c => console.log('[voices] boot fetcher exit code', c));
+}
+
 server.listen(PORT, '0.0.0.0', () => console.log('Reachmark Audio serving on :' + PORT));
