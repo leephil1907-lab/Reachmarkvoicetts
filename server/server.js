@@ -64,6 +64,7 @@ function agentDoc(b) {
     voiceId: str(b.voiceId, 40) || null, model: str(b.model, 64) || null,
     av: oneOf(str(b.av, 8), ['', 'warm', 'vio'], ''),
     emoji: str(b.emoji, 8) || '', traits: arrStr(b.traits, 8, 24),
+    avatarImage: typeof b.avatarImage === 'string' ? b.avatarImage : null,
     language: oneOf(str(b.language, 8), ['auto', 'en', 'fr', 'es', 'de'], 'auto'),
   };
 }
@@ -423,7 +424,10 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/agents' && req.method === 'GET') return json(res, 200, { agents: store.agents.list(uid) });
     if (p === '/api/agents' && req.method === 'POST') {
-      const d = agentDoc(JSON.parse(await readBody(req, 1e6)));
+      const b = JSON.parse(await readBody(req, 1200000));
+      if (b.avatarImage != null && b.avatarImage !== '' && (typeof b.avatarImage !== 'string' || b.avatarImage.length > 900000 || !/^data:image\\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.avatarImage)))
+        return json(res, 422, { error: 'Use a PNG, JPG or WebP image under 8 MB. The avatar is resized before upload.' });
+      const d = agentDoc(b);
       if (!d.name) return json(res, 422, { error: 'Give the agent a name.' });
       const a = { id: 'a_' + crypto.randomBytes(4).toString('hex'), created: Date.now(), system: false, ...d };
       store.agents.add(uid, a);
@@ -434,7 +438,12 @@ const server = http.createServer(async (req, res) => {
       const a = store.agents.get(uid, id);
       if (!a) return json(res, 404, { error: 'not found' });
       if (a.system) return json(res, 403, { error: 'The platform Guide cannot be modified.' });
-      const merged = { ...a, ...agentDoc(JSON.parse(await readBody(req, 1e6))), id, system: false };
+      const b = JSON.parse(await readBody(req, 1200000));
+      if (b.avatarImage != null && b.avatarImage !== '' && (typeof b.avatarImage !== 'string' || b.avatarImage.length > 900000 || !/^data:image\\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.avatarImage)))
+        return json(res, 422, { error: 'Use a PNG, JPG or WebP image under 8 MB. The avatar is resized before upload.' });
+      const patch = agentDoc(b);
+      if (!Object.prototype.hasOwnProperty.call(b, 'avatarImage')) patch.avatarImage = a.avatarImage || null;
+      const merged = { ...a, ...patch, id, system: false };
       store.agents.add(uid, merged);
       return json(res, 200, { agent: merged });
     }
