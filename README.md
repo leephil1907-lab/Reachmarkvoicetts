@@ -173,6 +173,47 @@ The Docker image installs python3 + `piper-tts`; the entrypoint downloads voices
 `$PIPER_VOICES_DIR` (on the persistent disk) on first boot. `/api/health` reports
 `piper.ready`, voice count, db engine and `DATA_DIR`.
 
+
+## Agent channels and Direct Call (optional provider setup)
+
+Character agents can keep their approved persona, knowledge base, configured memory context, voice, and per-contact conversation history across the web chat, Telegram, WhatsApp Business, and outbound phone calls.
+
+### Telegram
+
+1. Open **Agents → an agent → Connect WhatsApp & Telegram**.
+2. Create a bot with Telegram's official **@BotFather** and paste its bot token.
+3. Reachmark verifies the token and registers the webhook automatically. Incoming text messages are answered by the selected agent; recent turns are persisted per Telegram chat.
+
+### WhatsApp Business Platform
+
+1. In Meta for Developers, set up the official WhatsApp Cloud API and obtain the **Phone Number ID**, access token, and Meta **App Secret**.
+2. Enter those values under the agent's channel settings. Reachmark checks the Phone Number ID/token and stores the credentials encrypted.
+3. Copy the callback URL and verification token shown by Reachmark into the Meta app's webhook configuration, verify it, and subscribe to the **messages** field.
+
+WhatsApp requires the Meta webhook to be configured in Meta's dashboard. The integration handles text messages; it does not pretend that a WhatsApp account is connected before credentials and webhook verification are complete.
+
+### Direct phone calls
+
+The agent's **Direct Call** page supports two modes:
+
+- **Live conversation:** the recipient speaks, Twilio speech recognition returns their words, the agent replies using its configured agent runtime, and Reachmark generates the response in the selected agent voice.
+- **Fixed duration:** the agent repeatedly speaks the supplied announcement until the selected maximum duration is reached.
+
+Calls are initiated only by a signed-in user, limited to 30–300 seconds, protected by a per-account rate limit, and start with an AI disclosure. The interface requires confirmation that the recipient agreed to be contacted. Use the feature only for lawful, consent-based calls; carrier/provider fees apply.
+
+Configure these secrets in Railway **Variables** (never commit real credentials):
+
+```bash
+PUBLIC_URL=https://your-public-https-domain
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=+14155550123
+APP_ENCRYPTION_KEY=
+WHATSAPP_GRAPH_VERSION=v23.0
+```
+
+`TWILIO_FROM_NUMBER` must be a Twilio-owned E.164 number. `APP_ENCRYPTION_KEY` should be a randomly generated secret of at least 32 characters; keep it stable because it encrypts saved channel credentials. After configuring variables, redeploy and check the agent channel status. Direct calls remain unavailable until Twilio is fully configured. Telegram and WhatsApp connections require the encryption key.
+
 ## Studios
 
 | Studio | Route | Engine path |
