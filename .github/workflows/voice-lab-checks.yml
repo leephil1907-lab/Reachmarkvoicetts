@@ -24,5 +24,6 @@ jobs:
           node --check admin/server.js
           node --check admin/web/admin.js
           node --check admin/web/voice-lab.js
+          node --check web/sw.js
       - name: Check Python syntax
         run: python -m py_compile voice-worker/app.py
