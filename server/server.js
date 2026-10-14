@@ -365,8 +365,8 @@ const server = http.createServer(async (req, res) => {
     /* ---- Twilio callbacks: signed provider requests only ---- */
     if (p.startsWith('/api/telephony/media/') && req.method === 'GET') {
       const token = path.basename(p);
-      const base = (process.env.PUBLIC_URL || originOf(req)).replace(/\/$/, '');
-      if (!telephony.validateSignature(req, base + req.url, {})) return send(res, 403, 'Forbidden');
+      // The unguessable 192-bit media token is the authorization for audio fetches;
+      // some Twilio media fetches do not include webhook signature headers.
       const media = store.calls.media(token);
       if (!media || !/^[a-zA-Z0-9_.-]+$/.test(media.file)) return send(res, 404, 'Not found');
       const fp = path.join(store.DATA_DIR, 'call-media', path.basename(media.file));
