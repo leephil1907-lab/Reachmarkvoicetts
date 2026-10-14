@@ -195,4 +195,35 @@ function upgradeDenied({ name, reason }) {
   };
 }
 
-module.exports = { COMPANY, CONTACT, SUPPORT, welcome, passwordReset, passwordChanged, supportReply, suspended, reinstated, adminThreadNotice, adminOfflineReply, verifyEmail, verifiedNotice, upgradeRequest, upgradeApproved, upgradeDenied };
+function creditsAdjusted({ name, delta, balance, reason }) {
+  const change = (delta > 0 ? '+' : '') + Number(delta).toLocaleString();
+  const subject = 'Reachmark Audio credit balance updated';
+  const detail = reason ? '<br><span style="color:#77796f;font-size:12.5px">Note: ' + String(reason).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])) + '</span>' : '';
+  const html = wrap(subject, h1('Credit balance updated') +
+    p('Hi ' + String(name).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])) + ', a staff-reviewed account adjustment was applied to your Reachmark Audio balance.') +
+    p('<b>Change:</b> ' + change + ' credits<br><b>New balance:</b> ' + Number(balance).toLocaleString() + ' credits' + detail) +
+    p('If you do not recognise this adjustment, contact ' + SUPPORT + '.'), 'Your credit balance changed.');
+  const text = 'Hi ' + name + ', your Reachmark Audio credit balance changed.\nChange: ' + change + ' credits\nNew balance: ' + Number(balance).toLocaleString() + ' credits' + (reason ? '\nNote: ' + reason : '') + '\nQuestions: ' + SUPPORT;
+  return { subject, html, text };
+}
+function planChanged({ name, plan, url }) {
+  const subject = 'Your Reachmark Audio plan has been updated';
+  const active = plan === 'plus';
+  const html = wrap(subject, h1('Your plan is now ' + (active ? 'Plus' : 'Free')) +
+    p('Hi ' + name + ', your Reachmark Audio account plan was updated by our team. Your current plan is <b>' + (active ? 'Plus' : 'Free') + '</b>.') +
+    p(btn((url || 'https://reachmarkvoicetts-production.up.railway.app') + '/#/account', 'View your account')) +
+    p('<span style="color:#77796f;font-size:12.5px">If you have questions about this change, contact ' + SUPPORT + '.</span>'), 'Your plan has changed.');
+  const text = 'Hi ' + name + ', your Reachmark Audio plan is now ' + (active ? 'Plus' : 'Free') + '. View your account: ' + (url || 'https://reachmarkvoicetts-production.up.railway.app') + '/#/account\nQuestions: ' + SUPPORT;
+  return { subject, html, text };
+}
+function trialChanged({ name, granted, endsAt, url }) {
+  const subject = granted ? 'Your Reachmark Audio Plus trial has started' : 'Your Reachmark Audio Plus trial has ended';
+  const html = wrap(subject, h1(granted ? 'Your Plus trial is live' : 'Your Plus trial has ended') +
+    p('Hi ' + name + ', ' + (granted ? 'our team activated your Plus trial. Your Plus features are ready to use.' : 'your Plus trial has ended and your account has returned to the Free plan.')) +
+    (granted && endsAt ? p('Your trial is scheduled to end on <b>' + new Date(endsAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC</b>.') : '') +
+    p(btn((url || 'https://reachmarkvoicetts-production.up.railway.app') + '/#/account', 'Open account')) , 'Account plan update.');
+  const text = 'Hi ' + name + ', ' + (granted ? 'your Plus trial has started' + (endsAt ? ' and is scheduled to end at ' + new Date(endsAt).toISOString() : '') : 'your Plus trial has ended and your account is on Free') + '.\n' + (url || 'https://reachmarkvoicetts-production.up.railway.app') + '/#/account';
+  return { subject, html, text };
+}
+
+module.exports = { COMPANY, CONTACT, SUPPORT, welcome, passwordReset, passwordChanged, supportReply, suspended, reinstated, adminThreadNotice, adminOfflineReply, verifyEmail, verifiedNotice, upgradeRequest, upgradeApproved, upgradeDenied, creditsAdjusted, planChanged, trialChanged };
