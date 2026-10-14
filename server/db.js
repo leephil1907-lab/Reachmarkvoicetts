@@ -222,4 +222,28 @@ const config = {
   flags() { try { return JSON.parse(config.get('flags')); } catch { return JSON.parse(DEFAULT_CONFIG.flags); } },
 };
 
-module.exports = { db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config, pushSubs, upgradeReq };
+
+/* ---------- outbound voice calls + short-lived audio media ---------- */
+db.exec(`
+CREATE TABLE IF NOT EXISTS outbound_calls (
+  id TEXT PRIMARY KEY, uid TEXT NOT NULL, data TEXT NOT NULL, created INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_calls_uid ON outbound_calls(uid, created);
+CREATE TABLE IF NOT EXISTS call_media (
+  token TEXT PRIMARY KEY, callId TEXT NOT NULL, file TEXT NOT NULL, mime TEXT NOT NULL, created INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_call_media_call ON call_media(callId);
+`);
+const calls = {
+  add: (uid, call) => { db.prepare('INSERT INTO outbound_calls (id,uid,data,created) VALUES (?,?,?,?)').run(call.id, uid, JSON.stringify(call), call.created || Date.now()); return call; },
+  get: (uid, id) => { const r = db.prepare('SELECT data FROM outbound_calls WHERE uid=? AND id=?').get(uid, id); return r ? JSON.parse(r.data) : null; },
+  getAny: id => { const r = db.prepare('SELECT uid,data FROM outbound_calls WHERE id=?').get(id); return r ? { uid: r.uid, ...JSON.parse(r.data) } : null; },
+  list: uid => db.prepare('SELECT data FROM outbound_calls WHERE uid=? ORDER BY created DESC LIMIT 30').all(uid).map(r => JSON.parse(r.data)),
+  patch: (uid, id, patch) => { const call = calls.get(uid, id); if (!call) return null; Object.assign(call, patch); db.prepare('UPDATE outbound_calls SET data=? WHERE id=? AND uid=?').run(JSON.stringify(call), id, uid); return call; },
+  patchAny: (id, patch) => { const found = calls.getAny(id); if (!found) return null; Object.assign(found, patch); db.prepare('UPDATE outbound_calls SET data=? WHERE id=?').run(JSON.stringify(found), id); return found; },
+  addMedia: (token, callId, file, mime) => db.prepare('INSERT OR REPLACE INTO call_media (token,callId,file,mime,created) VALUES (?,?,?,?,?)').run(token, callId, file, mime, Date.now()),
+  media: token => db.prepare('SELECT * FROM call_media WHERE token=?').get(token) || null,
+  removeMediaForCall: callId => db.prepare('DELETE FROM call_media WHERE callId=?').run(callId),
+};
+
+module.exports = { calls, db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config, pushSubs, upgradeReq };
