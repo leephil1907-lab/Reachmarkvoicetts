@@ -1,0 +1,34 @@
+name: Reachmark Audio CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install PWA audit system dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes imagemagick
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run integration tests
+        run: npm test
+      - name: Audit PWA and security checklist
+        run: npm run audit:pwa
