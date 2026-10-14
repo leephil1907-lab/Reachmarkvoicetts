@@ -4,7 +4,7 @@ CosyVoice 3 supports zero-shot voice cloning and natural-language instructions
 for delivery/emotion. This worker keeps uploaded reference audio private.
 """
 from __future__ import annotations
-import base64, hmac, io, json, os, re, secrets, threading, time, shutil
+import base64, hmac, io, json, os, re, secrets, threading, time, shutil, sys
 from pathlib import Path
 from typing import Literal
 import soundfile as sf
@@ -14,6 +14,9 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import Response
 from modelscope import snapshot_download
 from pydantic import BaseModel, Field
+
+sys.path.insert(0, "/app/CosyVoice")
+sys.path.insert(0, "/app/CosyVoice/third_party/Matcha-TTS")
 
 ROOT = Path(os.getenv("VOICE_WORKER_DATA", "/data/voice-worker"))
 VOICES, CACHE = ROOT / "voices", ROOT / "models"
