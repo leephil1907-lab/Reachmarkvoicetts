@@ -91,7 +91,7 @@ routes['/auth'] = {
             h('div', { class: 'orbit-ring ring-a' }), h('div', { class: 'orbit-ring ring-b' }),
             h('div', { class: 'voice-core' }, h('span', { class: 'logo logo-img brand-mark', html: icons.brandMark })),
             h('span', { class: 'orbit-dot dot-a' }), h('span', { class: 'orbit-dot dot-b' }), h('span', { class: 'orbit-dot dot-c' }),
-            h('div', { class: 'wave-bars' }, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20].map((n) => h('i', { style: { '--bar': n } })))),
+            h('div', { class: 'wave-bars' }, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20].map((n) => h('i', { style: { '--bar': n, height: [7,12,18,10,15,21,13,8,17,23,14,9,19,12,22,15,8,18,11,16,7][n] + 'px' } })))),
           h('div', { class: 'gate-feature-row' },
             h('span', {}, icon('audioLines'), 'Voiceovers'), h('span', {}, icon('fingerprint'), 'Voice Match'), h('span', {}, icon('languages'), 'Dubbing')),
           h('div', { class: 'gate-quote' }, h('span', {}, '“'), h('p', {}, 'From a single sentence to a whole new soundscape.'), h('small', {}, 'MAKE SOMETHING PEOPLE CAN HEAR.'))),
