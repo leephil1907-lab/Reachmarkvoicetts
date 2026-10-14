@@ -342,8 +342,8 @@ routes['/agent/:id/channels'] = {
               h('input', { class: 'input', readonly: true, value: ch.callbackUrl || '' }),
               h('label', { class: 'fld' }, 'Verify token'),
               h('input', { class: 'input', readonly: true, value: ch.verifyToken || '' }),
-              h('button', { class: 'btn sm', onclick: () => GenUI.copy(ch.callbackUrl || '') }, icon('copy'), 'Copy callback URL'),
-              h('button', { class: 'btn sm', onclick: () => GenUI.copy(ch.verifyToken || '') }, icon('copy'), 'Copy verify token'));
+              h('button', { class: 'btn sm', onclick: () => navigator.clipboard?.writeText(ch.callbackUrl || '').then(() => toast('Callback URL copied', 'copy')).catch(() => toast('Select and copy the URL manually', 'copy')) }, icon('copy'), 'Copy callback URL'),
+              h('button', { class: 'btn sm', onclick: () => navigator.clipboard?.writeText(ch.verifyToken || '').then(() => toast('Verify token copied', 'copy')).catch(() => toast('Select and copy the token manually', 'copy')) }, icon('copy'), 'Copy verify token'));
           }
         }
       } catch (e) { status.textContent = e.message; }
