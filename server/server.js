@@ -347,6 +347,19 @@ const server = http.createServer(async (req, res) => {
       return json(res, 503, { error: 'Reachmark Audio is under maintenance — please try again shortly.' });
 
     if (p === '/api/me') return json(res, 200, { user: pubUser(user) });
+    if (p === '/api/account/profile' && req.method === 'POST') {
+      if (!store.rateLimit('profile:' + uid, 10, 60 * 60 * 1000))
+        return json(res, 429, { error: 'Too many profile changes. Please try again later.' });
+      const b = JSON.parse(await readBody(req, 1e5));
+      const name = str(b.name, 60)?.trim().replace(/\\s+/g, ' ') || '';
+      if (name.length < 2 || name.length > 48)
+        return json(res, 400, { error: 'Display name must be between 2 and 48 characters.' });
+      if (/[\\u0000-\\u001f\\u007f<>]/.test(name))
+        return json(res, 400, { error: 'Please use a valid display name.' });
+      user.name = name;
+      store.users.save(user);
+      return json(res, 200, { user: pubUser(user), message: 'Profile updated.' });
+    }
     /* ---- Plus upgrades: request → staff approval. NEVER self-service. ---- */
     if (p === '/api/upgrade/request' && req.method === 'POST') {
       const b = JSON.parse(await readBody(req, 1e6));
