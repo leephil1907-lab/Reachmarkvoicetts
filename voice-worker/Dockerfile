@@ -14,12 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 RUN git clone --depth 1 --recursive https://github.com/FunAudioLLM/CosyVoice.git /app/CosyVoice \
     && cd /app/CosyVoice && git submodule update --init --recursive
+COPY voice-worker/requirements.txt /app/voice-worker-requirements.txt
 RUN python3 -m pip install --upgrade pip setuptools==69.5.1 \
     && python3 -m pip install torch==2.3.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu121 \
     && python3 -m pip install -r /app/CosyVoice/requirements.txt \
     && python3 -m pip install -r /app/voice-worker-requirements.txt
 
-COPY voice-worker/requirements.txt /app/voice-worker-requirements.txt
 COPY voice-worker/app.py /app/app.py
 RUN mkdir -p /data/voice-worker
 EXPOSE 7860
