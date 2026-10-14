@@ -236,16 +236,21 @@ const server = http.createServer(async (req, res) => {
         const t = store.users.byId(String(b.id || ''));
         if (!t) return json(res, 404, { error: 'User not found.' });
         store.adjustTx(t.id, delta);
-        log('credits.adjust', t.email, { delta, reason: str(b.reason, 200) || '' });
-        return json(res, 200, { ok: true, credits: store.users.byId(t.id).credits });
+        const updated = store.users.byId(t.id);
+        const reason = str(b.reason, 200) || '';
+        log('credits.adjust', t.email, { delta, reason });
+        mail.send({ to: updated.email, ...tpl.creditsAdjusted({ name: updated.name, delta, balance: updated.credits, reason }) }).then(r => { if (!r.sent) console.error('[email:credits-adjusted] delivery failed:', r.error); }).catch(e => console.error('[email:credits-adjusted] delivery error:', e.message));
+        return json(res, 200, { ok: true, credits: updated.credits });
       }
       if (p === '/api/user/plan' && req.method === 'POST') {
         if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
         const b = await body(1e5);
         const t = store.users.byId(String(b.id || '')); if (!t) return json(res, 404, { error: 'User not found.' });
+        const previousPlan = t.plan;
         t.plan = oneOf(String(b.plan), ['free', 'plus'], 'free');
         if (t.plan === 'free') t.trial_ends = null;
-        store.users.save(t); log('plan.change', t.email, { plan: t.plan });
+        store.users.save(t); log('plan.change', t.email, { previousPlan, plan: t.plan });
+        if (previousPlan !== t.plan) mail.send({ to: t.email, ...tpl.planChanged({ name: t.name, plan: t.plan, url: PUBLIC_URL }) }).then(r => { if (!r.sent) console.error('[email:plan-changed] delivery failed:', r.error); }).catch(e => console.error('[email:plan-changed] delivery error:', e.message));
         return json(res, 200, { ok: true, plan: t.plan });
       }
       if (p === '/api/upgrades' && req.method === 'GET') {
@@ -280,6 +285,7 @@ const server = http.createServer(async (req, res) => {
         if (b.grant) { t.plan = 'plus'; t.trial_used = 1; t.trial_ends = Date.now() + 7 * 864e5; }
         else { t.plan = 'free'; t.trial_ends = null; }
         store.users.save(t); log('trial.' + (b.grant ? 'grant' : 'end'), t.email, { trial_ends: t.trial_ends });
+        mail.send({ to: t.email, ...tpl.trialChanged({ name: t.name, granted: !!b.grant, endsAt: t.trial_ends, url: PUBLIC_URL }) }).then(r => { if (!r.sent) console.error('[email:trial-change] delivery failed:', r.error); }).catch(e => console.error('[email:trial-change] delivery error:', e.message));
         return json(res, 200, { ok: true, plan: t.plan, trial_ends: t.trial_ends });
       }
       if (p === '/api/user/suspend' && req.method === 'POST') {
