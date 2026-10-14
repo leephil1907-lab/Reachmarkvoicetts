@@ -317,6 +317,7 @@ routes['/agent/:id/channels'] = {
     const waSetup = h('div', { class: 'card flat', hidden: true });
     const status = h('small', { class: 'muted' }, 'Loading secure channel status…');
     const renderConnections = async () => {
+      waSetup.hidden = true; waSetup.replaceChildren();
       try {
         const r = await api('/api/agents/' + encodeURIComponent(a.id) + '/channels');
         connected.replaceChildren();
