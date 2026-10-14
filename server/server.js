@@ -425,7 +425,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/agents' && req.method === 'GET') return json(res, 200, { agents: store.agents.list(uid) });
     if (p === '/api/agents' && req.method === 'POST') {
       const b = JSON.parse(await readBody(req, 1200000));
-      if (b.avatarImage != null && b.avatarImage !== '' && (typeof b.avatarImage !== 'string' || b.avatarImage.length > 900000 || !/^data:image\\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.avatarImage)))
+      if (b.avatarImage != null && b.avatarImage !== '' && (typeof b.avatarImage !== 'string' || b.avatarImage.length > 900000 || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.avatarImage)))
         return json(res, 422, { error: 'Use a PNG, JPG or WebP image under 8 MB. The avatar is resized before upload.' });
       const d = agentDoc(b);
       if (!d.name) return json(res, 422, { error: 'Give the agent a name.' });
@@ -439,7 +439,7 @@ const server = http.createServer(async (req, res) => {
       if (!a) return json(res, 404, { error: 'not found' });
       if (a.system) return json(res, 403, { error: 'The platform Guide cannot be modified.' });
       const b = JSON.parse(await readBody(req, 1200000));
-      if (b.avatarImage != null && b.avatarImage !== '' && (typeof b.avatarImage !== 'string' || b.avatarImage.length > 900000 || !/^data:image\\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.avatarImage)))
+      if (b.avatarImage != null && b.avatarImage !== '' && (typeof b.avatarImage !== 'string' || b.avatarImage.length > 900000 || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.avatarImage)))
         return json(res, 422, { error: 'Use a PNG, JPG or WebP image under 8 MB. The avatar is resized before upload.' });
       const patch = agentDoc(b);
       if (!Object.prototype.hasOwnProperty.call(b, 'avatarImage')) patch.avatarImage = a.avatarImage || null;
