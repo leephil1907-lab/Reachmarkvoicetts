@@ -525,7 +525,9 @@ routes['/call/:id'] = {
       h('div', { class: 'sect' }, 'Recent calls'),
       history,
       result));
-    await loadCalls();
+    // Render the call screen before the provider/history request completes.
+    // A slow or stalled API request must never keep the router's view swap pending.
+    void loadCalls();
     routeCleanup.push(() => { if (poll) clearInterval(poll); });
   },
 };
