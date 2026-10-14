@@ -7,7 +7,7 @@ import { welcomeSheet } from './auth.js';
 /* ---------- splash ---------- */
 const splash = h('div', { id: 'splash' },
   h('div', { class: 'sl' },
-    h('div', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: '' })),
+    h('span', { class: 'logo logo-img brand-mark', html: icons.brandMark, 'aria-label': 'Reachmark Audio' }),
     h('h1', {}, 'Reachmark Audio'),
     h('p', {}, 'The AI voice studio'),
     h('small', { style: { color: 'var(--faint)', fontSize: '11px', letterSpacing: '.12em', textTransform: 'uppercase' } }, 'by Reachmark Digital'),
@@ -34,7 +34,7 @@ const NAV = [
 ];
 const sb = document.querySelector('#sidebar');
 sb.append(h('div', { class: 'brand' },
-  h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: 'Reachmark Audio' })),
+  h('span', { class: 'logo logo-img brand-mark', html: icons.brandMark, 'aria-label': 'Reachmark Audio' }),
   h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))));
 for (const [label, items] of NAV) {
   sb.append(h('div', { class: 'navlabel' }, label));
