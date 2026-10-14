@@ -4,7 +4,7 @@ import { mountAurora } from './gl-bg.js';
 
 routes['/auth'] = {
   title: 'Welcome', public: true,
-  top: () => ({ noUser: true, left: h('div', { class: 'brand', style: { padding: '4px 0' } }, h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: 'Reachmark Audio' })), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))) }),
+  top: () => ({ noUser: true, left: h('div', { class: 'brand', style: { padding: '4px 0' } }, h('span', { class: 'logo logo-img brand-mark', html: icons.brandMark, 'aria-label': 'Reachmark Audio' }), h('div', {}, h('b', {}, 'Reachmark Audio'), h('span', {}, 'by Reachmark Digital'))) }),
   view: async ({ node }) => {
     let mode = 'login';
     const err = h('div', { class: 'auth-err', hidden: true });
@@ -73,7 +73,7 @@ routes['/auth'] = {
     node.append(h('div', { class: 'appgate', 'data-stag': '' },
       aurora,
       h('header', { class: 'gate-top' },
-        h('span', { class: 'logo logo-img' }, h('img', { src: '/assets/logo-192.png', alt: '' })),
+        h('span', { class: 'logo logo-img brand-mark', html: icons.brandMark, 'aria-label': 'Reachmark Audio' }),
         h('div', {}, h('b', {}, 'Reachmark Audio'), h('small', {}, 'by Reachmark Digital')),
         engChip),
       h('div', { class: 'auth-card card' },
