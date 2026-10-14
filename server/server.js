@@ -17,6 +17,7 @@ const el = require('./elevenlabs');
 const brainS = require('./brain');
 const mail = require('./mail');
 const pushlib = require('./pushlib');
+const telephony = require('./telephony');
 const tpl = require('./templates');
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@reachmarkdigital.com';
 const ADMIN_URL = process.env.ADMIN_URL || 'http://localhost:8001';
@@ -196,6 +197,49 @@ function matchProfile(uid, name, sampleBuf, note) {
 }
 const userSamplesDir = uid => { const d = path.join(store.DATA_DIR, 'u', uid, 'samples'); fs.mkdirSync(d, { recursive: true }); return d; };
 
+async function createCallAudio(uid, agent, text, callId) {
+  const voice = agent.voiceId ? store.voices.get(uid, agent.voiceId) : null;
+  let buf, mime = 'audio/wav', ext = '.wav';
+  if (voice?.engine === 'elevenlabs' && el.configured() && el.validVoiceId(voice.engineVoiceId)) {
+    buf = await el.tts(voice.engineVoiceId, String(text).slice(0, 4000));
+    mime = 'audio/mpeg'; ext = '.mp3';
+  } else {
+    const rendered = await tts.synthesize({
+      text: String(text).slice(0, 4000),
+      model: voice?.model || agent.model || undefined,
+      lang: agent.language && agent.language !== 'auto' ? agent.language : 'en',
+      semitones: voice?.semitones ?? 0,
+      rate: voice?.rate ?? 1,
+      fx: voice?.fx || 'none',
+    }, uid);
+    buf = rendered.buf;
+  }
+  const dir = path.join(store.DATA_DIR, 'call-media');
+  fs.mkdirSync(dir, { recursive: true });
+  const token = crypto.randomBytes(24).toString('hex');
+  const file = 'call_' + token + ext;
+  fs.writeFileSync(path.join(dir, file), buf);
+  store.calls.addMedia(token, callId, file, mime);
+  return { token, url: (process.env.PUBLIC_URL || '').replace(/\/$/, '') + '/api/telephony/media/' + token };
+}
+function callUrl(req, endpoint, call) {
+  const base = (process.env.PUBLIC_URL || originOf(req)).replace(/\/$/, '');
+  return base + '/api/telephony/' + endpoint + '?callId=' + encodeURIComponent(call.id) + '&key=' + encodeURIComponent(call.token);
+}
+function callKeyMatches(expected, actual) {
+  if (typeof expected !== 'string' || typeof actual !== 'string') return false;
+  const a = Buffer.from(expected), b = Buffer.from(actual);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function twiml(res, inner) {
+  return send(res, 200, telephony.responseXml(inner), { 'Content-Type': 'text/xml; charset=utf-8', 'Cache-Control': 'no-store' });
+}
+function twilioParams(body) { return Object.fromEntries(new URLSearchParams(body.toString('utf8'))); }
+function callLanguage(agent) {
+  return ({ en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE' })[agent?.language] || 'en-US';
+}
+
+
 /* ---------------- router ---------------- */
 const server = http.createServer(async (req, res) => {
   const secure = securityHeaders(res, req);
@@ -315,6 +359,110 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/auth/me') {
       const c = cookieUser(req);
       return c ? json(res, 200, { user: pubUser(c.user) }) : json(res, 401, { error: 'not signed in' });
+    }
+
+
+    /* ---- Twilio callbacks: signed provider requests only ---- */
+    if (p.startsWith('/api/telephony/media/') && req.method === 'GET') {
+      const token = path.basename(p);
+      const base = (process.env.PUBLIC_URL || originOf(req)).replace(/\/$/, '');
+      if (!telephony.validateSignature(req, base + req.url, {})) return send(res, 403, 'Forbidden');
+      const media = store.calls.media(token);
+      if (!media || !/^[a-zA-Z0-9_.-]+$/.test(media.file)) return send(res, 404, 'Not found');
+      const fp = path.join(store.DATA_DIR, 'call-media', path.basename(media.file));
+      if (!fs.existsSync(fp)) return send(res, 404, 'Not found');
+      return send(res, 200, fs.readFileSync(fp), { 'Content-Type': media.mime || 'audio/wav', 'Cache-Control': 'private, max-age=300' });
+    }
+    if (['/api/telephony/voice', '/api/telephony/turn', '/api/telephony/status'].includes(p) && req.method === 'POST') {
+      const raw = await readBody(req, 1e6);
+      const params = twilioParams(raw);
+      const base = (process.env.PUBLIC_URL || originOf(req)).replace(/\/$/, '');
+      if (!telephony.validateSignature(req, base + req.url, params)) return send(res, 403, 'Forbidden');
+      const callId = url.searchParams.get('callId') || '';
+      const key = url.searchParams.get('key') || '';
+      const call = store.calls.getAny(callId);
+      if (!call || !call.token || !callKeyMatches(call.token, key)) return send(res, 404, 'Call not found');
+      const agent = store.agents.get(call.uid, call.agentId);
+      if (!agent) return twiml(res, telephony.hangup());
+      if (p === '/api/telephony/status') {
+        const providerStatus = String(params.CallStatus || '').slice(0, 40);
+        const patch = { providerStatus };
+        if (providerStatus === 'in-progress' && !call.startedAt) patch.startedAt = Date.now();
+        if (['completed', 'busy', 'failed', 'no-answer', 'canceled'].includes(providerStatus)) {
+          patch.status = providerStatus;
+          patch.endedAt = Date.now();
+        } else if (providerStatus === 'queued' || providerStatus === 'initiated' || providerStatus === 'ringing') patch.status = providerStatus;
+        store.calls.patchAny(call.id, patch);
+        return send(res, 204, '');
+      }
+      if (['completed', 'busy', 'failed', 'no-answer', 'canceled'].includes(call.status)) return twiml(res, telephony.hangup());
+      const baseUrl = (process.env.PUBLIC_URL || originOf(req)).replace(/\/$/, '');
+      const voiceUrl = callUrl(req, 'voice', call);
+      const turnUrl = callUrl(req, 'turn', call);
+      const disclosure = 'Hello. This is an AI assistant calling on behalf of Reachmark Audio. You can end this call at any time.';
+      if (p === '/api/telephony/voice') {
+        if (call.mode === 'fixed') {
+          const startedAt = call.startedAt || Date.now();
+          if (!call.startedAt) store.calls.patchAny(call.id, { startedAt, status: 'in-progress' });
+          if ((Date.now() - startedAt) / 1000 >= call.durationSec) {
+            store.calls.patchAny(call.id, { status: 'completed', endedAt: Date.now() });
+            return twiml(res, telephony.hangup());
+          }
+          let out = '';
+          if (!call.disclosurePlayed) {
+            out += telephony.say(disclosure);
+            store.calls.patchAny(call.id, { disclosurePlayed: true });
+          }
+          out += call.scriptAudioToken
+            ? telephony.play(baseUrl + '/api/telephony/media/' + call.scriptAudioToken)
+            : telephony.say(call.script);
+          out += telephony.redirect(voiceUrl);
+          return twiml(res, out);
+        }
+        const greeting = disclosure + ' ' + (agent.greeting || ('Hello, I am ' + agent.name + '. How can I help?'));
+        let audioUrl = null;
+        try {
+          if (call.greetingAudioToken) audioUrl = baseUrl + '/api/telephony/media/' + call.greetingAudioToken;
+          else {
+            const clip = await createCallAudio(call.uid, agent, greeting, call.id);
+            audioUrl = clip.url;
+            store.calls.patchAny(call.id, { greetingAudioToken: clip.token, status: 'in-progress', startedAt: call.startedAt || Date.now() });
+          }
+        } catch (e) {
+          console.error('[telephony] greeting synthesis failed:', e.message);
+          return twiml(res, telephony.say(disclosure + ' I cannot access my configured voice right now. Please try again later.') + telephony.hangup());
+        }
+        const lang = callLanguage(agent);
+        const prompt = telephony.gather(turnUrl, telephony.play(audioUrl), lang);
+        return twiml(res, prompt + telephony.redirect(voiceUrl));
+      }
+      const speech = String(params.SpeechResult || '').trim().slice(0, 2000);
+      if (!speech) {
+        const misses = (call.noSpeechCount || 0) + 1;
+        store.calls.patchAny(call.id, { noSpeechCount: misses });
+        if (misses >= 3) return twiml(res, telephony.say('I did not hear a response, so I will end the call now. Goodbye.') + telephony.hangup());
+        return twiml(res, telephony.gather(turnUrl, telephony.say('I did not catch that. Please say that again.'), callLanguage(agent)) + telephony.redirect(voiceUrl));
+      }
+      store.calls.patchAny(call.id, { noSpeechCount: 0 });
+      const history = Array.isArray(call.history) ? call.history.slice(-12) : [];
+      let answer;
+      try { answer = await llm.chat({ agent, history, message: speech }); } catch (e) { console.warn('[telephony] LLM unavailable:', e.message); }
+      const reply = String(answer?.content || brainS.respond(agent, speech) || 'I am sorry, I could not answer that just now.').slice(0, 1200);
+      const nextHistory = history.concat([{ role: 'user', content: speech }, { role: 'assistant', content: reply }]).slice(-12);
+      const transcript = (Array.isArray(call.transcript) ? call.transcript : []).concat([
+        { role: 'user', content: speech, at: Date.now() },
+        { role: 'assistant', content: reply, at: Date.now() },
+      ]).slice(-100);
+      store.calls.patchAny(call.id, { history: nextHistory, transcript, lastTurnAt: Date.now() });
+      if (/\b(goodbye|end the call|hang up|that's all for now)\b/i.test(speech)) return twiml(res, telephony.say('Thank you for your time. Goodbye.') + telephony.hangup());
+      try {
+        const clip = await createCallAudio(call.uid, agent, reply, call.id);
+        const prompt = telephony.gather(turnUrl, telephony.play(clip.url), callLanguage(agent));
+        return twiml(res, prompt + telephony.redirect(voiceUrl));
+      } catch (e) {
+        console.error('[telephony] reply synthesis failed:', e.message);
+        return twiml(res, telephony.say('I am sorry, my voice engine is unavailable. I will end the call now.') + telephony.hangup());
+      }
     }
 
     /* ---- static (public shell; real 404 for missing files with extensions) ---- */
@@ -454,6 +602,61 @@ const server = http.createServer(async (req, res) => {
       if (a.system) return json(res, 403, { error: 'The platform Guide cannot be removed.' });
       store.agents.del(uid, id);
       return json(res, 200, { ok: true });
+    }
+
+
+    /* ---- outbound Direct Call: agent voice over a real phone network ---- */
+    if (p === '/api/telephony/status' && req.method === 'GET') {
+      return json(res, 200, { configured: telephony.configured(), calls: store.calls.list(uid).map(c => ({ id: c.id, agentId: c.agentId, toNumber: c.toNumber, mode: c.mode, durationSec: c.durationSec, status: c.status, providerStatus: c.providerStatus, created: c.created, startedAt: c.startedAt || null, endedAt: c.endedAt || null, transcript: c.transcript || [] })) });
+    }
+    if (p === '/api/telephony/calls' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req, 1e5));
+      if (!telephony.configured()) return json(res, 503, { error: 'Direct Call is not connected yet. The hosting environment needs Twilio credentials and a public HTTPS URL.' });
+      if (b.consent !== true) return json(res, 422, { error: 'Confirm that the recipient has agreed to receive this call and that you are authorized to contact them.' });
+      if (!store.rateLimit('direct-call:' + uid, 5, 24 * 60 * 60 * 1000)) return json(res, 429, { error: 'You have reached the direct-call limit of 5 calls per 24 hours.' });
+      const agent = store.agents.get(uid, str(b.agentId, 40));
+      if (!agent || agent.system || agent.disabled) return json(res, 404, { error: 'Choose an available agent you own before starting a call.' });
+      let to;
+      try { to = telephony.normalizeE164(b.toNumber); } catch (e) { return json(res, e.status || 422, { error: e.message }); }
+      const mode = oneOf(str(b.mode, 12), ['live', 'fixed'], 'live');
+      const durationSec = num(b.durationSec, 30, 300, 60);
+      const script = str(b.script, 2000)?.trim() || '';
+      if (mode === 'fixed' && script.length < 10) return json(res, 422, { error: 'Write an announcement of at least 10 characters for fixed-duration mode.' });
+      if (mode === 'live' && !llm.configured()) {
+        // The local persona brain remains available, but this is a voice-call warning rather than a fake "AI connected" claim.
+      }
+      const call = {
+        id: 'call_' + crypto.randomBytes(8).toString('hex'),
+        token: crypto.randomBytes(32).toString('hex'),
+        uid, agentId: agent.id, toNumber: to, mode, durationSec, script,
+        status: 'preparing', providerStatus: null, created: Date.now(),
+        startedAt: null, endedAt: null, history: [], transcript: [],
+      };
+      try {
+        if (mode === 'fixed') {
+          const clip = await createCallAudio(uid, agent, script, call.id);
+          call.scriptAudioToken = clip.token;
+        }
+        store.calls.add(uid, call);
+        const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+        const started = await telephony.createCall({
+          to,
+          url: base + '/api/telephony/voice?callId=' + encodeURIComponent(call.id) + '&key=' + encodeURIComponent(call.token),
+          statusCallback: base + '/api/telephony/status?callId=' + encodeURIComponent(call.id) + '&key=' + encodeURIComponent(call.token),
+          timeLimit: durationSec,
+        });
+        store.calls.patch(uid, call.id, { providerSid: started.sid, providerStatus: started.status, status: started.status || 'queued' });
+        return json(res, 201, { call: { id: call.id, toNumber: to, mode, durationSec, status: started.status || 'queued', created: call.created }, message: 'Call request accepted. The recipient will hear an AI disclosure before the agent speaks.' });
+      } catch (e) {
+        store.calls.patch(uid, call.id, { status: 'failed', error: String(e.message || 'Call failed').slice(0, 240), endedAt: Date.now() });
+        return json(res, e.status || 502, { error: e.message || 'Could not start the phone call.' });
+      }
+    }
+    if (p.startsWith('/api/telephony/calls/') && req.method === 'GET') {
+      const id = path.basename(p);
+      const call = store.calls.get(uid, id);
+      if (!call) return json(res, 404, { error: 'Call not found.' });
+      return json(res, 200, { call: { id: call.id, agentId: call.agentId, toNumber: call.toNumber, mode: call.mode, durationSec: call.durationSec, status: call.status, providerStatus: call.providerStatus, created: call.created, startedAt: call.startedAt || null, endedAt: call.endedAt || null, transcript: call.transcript || [], error: call.error || null } });
     }
 
     if (p === '/api/history' && req.method === 'GET') return json(res, 200, { history: store.history.list(uid) });
