@@ -18,6 +18,7 @@ const brainS = require('./brain');
 const mail = require('./mail');
 const pushlib = require('./pushlib');
 const telephony = require('./telephony');
+const secretbox = require('./secretbox');
 const tpl = require('./templates');
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@reachmarkdigital.com';
 const ADMIN_URL = process.env.ADMIN_URL || 'http://localhost:8001';
@@ -67,6 +68,7 @@ function agentDoc(b) {
     emoji: str(b.emoji, 8) || '', traits: arrStr(b.traits, 8, 24),
     avatarImage: typeof b.avatarImage === 'string' ? b.avatarImage : null,
     language: oneOf(str(b.language, 8), ['auto', 'en', 'fr', 'es', 'de'], 'auto'),
+    memory: str(b.memory, 3000) || '',
   };
 }
 function historyDoc(b) {
@@ -222,6 +224,25 @@ async function createCallAudio(uid, agent, text, callId) {
   store.calls.addMedia(token, callId, file, mime);
   return { token, url: (process.env.PUBLIC_URL || '').replace(/\/$/, '') + '/api/telephony/media/' + token };
 }
+
+async function channelAgentReply(uid, agentId, provider, remoteId, message) {
+  if (!store.rateLimit('channel:' + provider + ':' + agentId + ':' + remoteId, 20, 60000)) return 'I am receiving messages too quickly. Please wait a moment and try again.';
+  const agent = store.agents.get(uid, agentId);
+  if (!agent || agent.disabled) return null;
+  const existing = store.conversations.get(provider, agentId, remoteId);
+  const history = Array.isArray(existing?.history) ? existing.history.slice(-12) : [];
+  let result = null;
+  try { result = await llm.chat({ agent, history, message }); } catch (e) { console.warn('[channels] agent runtime fallback:', e.message); }
+  const reply = String(result?.content || brainS.respond(agent, message) || 'I am sorry, I could not answer that just now.').slice(0, 4000);
+  const nextHistory = history.concat([{ role: 'user', content: message.slice(0, 1500) }, { role: 'assistant', content: reply.slice(0, 1500) }]).slice(-12);
+  const transcript = (Array.isArray(existing?.transcript) ? existing.transcript : []).concat([
+    { role: 'user', content: message.slice(0, 1500), at: Date.now() },
+    { role: 'assistant', content: reply.slice(0, 1500), at: Date.now() },
+  ]).slice(-100);
+  store.conversations.save(uid, agentId, provider, remoteId, { history: nextHistory, transcript, lastMessageAt: Date.now() });
+  return reply;
+}
+
 function callUrl(req, endpoint, call) {
   const base = (process.env.PUBLIC_URL || originOf(req)).replace(/\/$/, '');
   return base + '/api/telephony/' + endpoint + '?callId=' + encodeURIComponent(call.id) + '&key=' + encodeURIComponent(call.token);
@@ -361,6 +382,77 @@ const server = http.createServer(async (req, res) => {
       return c ? json(res, 200, { user: pubUser(c.user) }) : json(res, 401, { error: 'not signed in' });
     }
 
+
+
+    /* ---- Telegram + WhatsApp inbound webhooks ---- */
+    const tgPath = /^\/api\/channels\/telegram\/([^/]+)\/([^/]+)$/.exec(p);
+    const waPath = /^\/api\/channels\/whatsapp\/([^/]+)$/.exec(p);
+    if (tgPath && req.method === 'POST') {
+      const agentId = decodeURIComponent(tgPath[1]), key = tgPath[2];
+      const row = store.channels.getAny(agentId, 'telegram');
+      if (!row || !row.data?.encrypted) return json(res, 404, { error: 'Channel not found.' });
+      let credentials;
+      try { credentials = secretbox.decrypt(row.data.encrypted); } catch { return json(res, 503, { error: 'Channel credentials cannot be decrypted on this server.' }); }
+      if (!callKeyMatches(credentials.webhookKey, key) || !callKeyMatches(credentials.webhookKey, String(req.headers['x-telegram-bot-api-secret-token'] || '')))
+        return json(res, 403, { error: 'Invalid Telegram webhook secret.' });
+      const body = JSON.parse((await readBody(req, 1e6)).toString('utf8') || '{}');
+      const message = body.message;
+      const textIn = String(message?.text || message?.caption || '').trim().slice(0, 2000);
+      const remoteId = message?.chat?.id;
+      if (message && remoteId != null && textIn && !message.from?.is_bot) {
+        try {
+          const reply = await channelAgentReply(row.uid, agentId, 'telegram', String(remoteId), textIn);
+          if (reply) await fetch('https://api.telegram.org/bot' + credentials.botToken + '/sendMessage', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ chat_id: remoteId, text: reply.slice(0, 4000), disable_web_page_preview: true }),
+            signal: AbortSignal.timeout(12000),
+          });
+        } catch (e) { console.error('[channels:telegram] message failed:', e.message); }
+      }
+      return json(res, 200, { ok: true });
+    }
+    if (waPath && req.method === 'GET') {
+      const agentId = decodeURIComponent(waPath[1]);
+      const row = store.channels.getAny(agentId, 'whatsapp');
+      if (!row || !row.data?.encrypted) return send(res, 404, 'Channel not connected');
+      let credentials;
+      try { credentials = secretbox.decrypt(row.data.encrypted); } catch { return send(res, 503, 'Channel credentials unavailable'); }
+      const mode = url.searchParams.get('hub.mode');
+      const verifyToken = url.searchParams.get('hub.verify_token') || '';
+      const challenge = url.searchParams.get('hub.challenge') || '';
+      if (mode === 'subscribe' && callKeyMatches(credentials.verifyToken, verifyToken) && challenge.length <= 512)
+        return send(res, 200, challenge, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+      return send(res, 403, 'Webhook verification failed');
+    }
+    if (waPath && req.method === 'POST') {
+      const agentId = decodeURIComponent(waPath[1]);
+      const row = store.channels.getAny(agentId, 'whatsapp');
+      if (!row || !row.data?.encrypted) return json(res, 404, { error: 'Channel not found.' });
+      let credentials;
+      try { credentials = secretbox.decrypt(row.data.encrypted); } catch { return json(res, 503, { error: 'Channel credentials cannot be decrypted on this server.' }); }
+      const raw = await readBody(req, 1e6);
+      const supplied = String(req.headers['x-hub-signature-256'] || '');
+      const expected = 'sha256=' + crypto.createHmac('sha256', credentials.appSecret).update(raw).digest('hex');
+      if (!callKeyMatches(expected, supplied)) return json(res, 403, { error: 'Invalid WhatsApp webhook signature.' });
+      const payload = JSON.parse(raw.toString('utf8') || '{}');
+      const messages = [];
+      for (const entry of payload.entry || []) for (const change of entry.changes || []) for (const m of change.value?.messages || []) {
+        const textIn = String(m.text?.body || m.button?.text || m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || '').trim().slice(0, 2000);
+        if (m.from && textIn) messages.push({ from: String(m.from), text: textIn });
+      }
+      for (const m of messages.slice(0, 5)) {
+        try {
+          const reply = await channelAgentReply(row.uid, agentId, 'whatsapp', m.from, m.text);
+          if (reply) await fetch('https://graph.facebook.com/' + (process.env.WHATSAPP_GRAPH_VERSION || 'v23.0') + '/' + credentials.phoneNumberId + '/messages', {
+            method: 'POST',
+            headers: { authorization: 'Bearer ' + credentials.accessToken, 'content-type': 'application/json' },
+            body: JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: m.from, type: 'text', text: { preview_url: false, body: reply.slice(0, 4000) } }),
+            signal: AbortSignal.timeout(12000),
+          });
+        } catch (e) { console.error('[channels:whatsapp] message failed:', e.message); }
+      }
+      return json(res, 200, { ok: true });
+    }
 
     /* ---- Twilio callbacks: signed provider requests only ---- */
     if (p.startsWith('/api/telephony/media/') && req.method === 'GET') {
@@ -601,9 +693,83 @@ const server = http.createServer(async (req, res) => {
       if (!a) return json(res, 404, { error: 'not found' });
       if (a.system) return json(res, 403, { error: 'The platform Guide cannot be removed.' });
       store.agents.del(uid, id);
+      store.channels.delAgent(uid, id);
       return json(res, 200, { ok: true });
     }
 
+
+
+    /* ---- agent channel connections: encrypted credentials, owner-scoped ---- */
+    const channelRoute = /^\/api\/agents\/([^/]+)\/channels(?:\/([^/]+)(?:\/disconnect)?)?$/.exec(p);
+    if (channelRoute) {
+      const agentId = decodeURIComponent(channelRoute[1]);
+      const provider = channelRoute[2] || '';
+      const agent = store.agents.get(uid, agentId);
+      if (!agent) return json(res, 404, { error: 'Agent not found.' });
+      if (agent.system) return json(res, 403, { error: 'Platform agents cannot connect external channels.' });
+      if (req.method === 'GET' && !provider) {
+        const items = store.channels.list(uid, agentId).map(row => {
+          let details = {};
+          try { const secret = secretbox.decrypt(row.data.encrypted); if (row.provider === 'whatsapp') details = { verifyToken: secret.verifyToken }; } catch {}
+          return { provider: row.provider, connected: true, updated: row.updated, botUsername: row.data.botUsername || null, displayPhoneNumber: row.data.displayPhoneNumber || null, phoneNumberId: row.data.phoneNumberId || null, callbackUrl: row.data.callbackUrl || null, ...details };
+        });
+        return json(res, 200, { channels: items, encryptionConfigured: secretbox.configured() });
+      }
+      if (req.method === 'POST' && provider === 'telegram' && p.endsWith('/telegram')) {
+        if (!secretbox.configured()) return json(res, 503, { error: 'Secure channel storage is not configured. Set APP_ENCRYPTION_KEY to a random secret of at least 32 characters in the hosting environment.' });
+        const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+        if (!/^https:\/\//i.test(base)) return json(res, 503, { error: 'Telegram requires PUBLIC_URL to be a public HTTPS URL.' });
+        const b = JSON.parse(await readBody(req, 1e5));
+        const botToken = str(b.botToken, 180)?.trim() || '';
+        if (botToken.length < 30 || !/^\d+:[A-Za-z0-9_-]+$/.test(botToken)) return json(res, 422, { error: 'Enter a valid Telegram BotFather token.' });
+        try {
+          const meRes = await fetch('https://api.telegram.org/bot' + botToken + '/getMe', { signal: AbortSignal.timeout(10000) });
+          const me = await meRes.json().catch(() => ({}));
+          if (!meRes.ok || !me.ok || !me.result?.id) return json(res, 422, { error: 'Telegram could not verify that bot token. Check it with BotFather.' });
+          const webhookKey = crypto.randomBytes(24).toString('base64url');
+          const callbackUrl = base + '/api/channels/telegram/' + encodeURIComponent(agentId) + '/' + webhookKey;
+          const whRes = await fetch('https://api.telegram.org/bot' + botToken + '/setWebhook', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ url: callbackUrl, secret_token: webhookKey, allowed_updates: ['message'], drop_pending_updates: false }),
+            signal: AbortSignal.timeout(12000),
+          });
+          const wh = await whRes.json().catch(() => ({}));
+          if (!whRes.ok || !wh.ok) return json(res, 502, { error: wh.description || 'Telegram could not register the webhook.' });
+          store.channels.set(uid, agentId, 'telegram', { encrypted: secretbox.encrypt({ botToken, webhookKey }), botUsername: me.result.username || '', botName: me.result.first_name || '', callbackUrl, connected: true });
+          return json(res, 200, { channel: { provider: 'telegram', connected: true, botUsername: me.result.username || '', callbackUrl }, message: 'Telegram bot connected. Messages will use this agent and keep per-contact conversation context.' });
+        } catch (e) { return json(res, e.status || 502, { error: e.message || 'Telegram connection failed.' }); }
+      }
+      if (req.method === 'POST' && provider === 'whatsapp' && p.endsWith('/whatsapp')) {
+        if (!secretbox.configured()) return json(res, 503, { error: 'Secure channel storage is not configured. Set APP_ENCRYPTION_KEY to a random secret of at least 32 characters in the hosting environment.' });
+        const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+        if (!/^https:\/\//i.test(base)) return json(res, 503, { error: 'WhatsApp requires PUBLIC_URL to be a public HTTPS URL.' });
+        const b = JSON.parse(await readBody(req, 1e5));
+        const phoneNumberId = str(b.phoneNumberId, 80)?.trim() || '';
+        const accessToken = str(b.accessToken, 4000)?.trim() || '';
+        const appSecret = str(b.appSecret, 300)?.trim() || '';
+        if (!/^\d{5,30}$/.test(phoneNumberId) || accessToken.length < 20 || appSecret.length < 20) return json(res, 422, { error: 'Enter a valid Phone Number ID, access token, and Meta App Secret.' });
+        try {
+          const version = process.env.WHATSAPP_GRAPH_VERSION || 'v23.0';
+          const checkRes = await fetch('https://graph.facebook.com/' + version + '/' + phoneNumberId + '?fields=display_phone_number,verified_name', { headers: { authorization: 'Bearer ' + accessToken }, signal: AbortSignal.timeout(10000) });
+          const check = await checkRes.json().catch(() => ({}));
+          if (!checkRes.ok || check.error) return json(res, 422, { error: check.error?.message || 'WhatsApp could not verify this Phone Number ID and access token.' });
+          const verifyToken = crypto.randomBytes(24).toString('base64url');
+          const callbackUrl = base + '/api/channels/whatsapp/' + encodeURIComponent(agentId);
+          store.channels.set(uid, agentId, 'whatsapp', { encrypted: secretbox.encrypt({ phoneNumberId, accessToken, appSecret, verifyToken }), phoneNumberId, displayPhoneNumber: check.display_phone_number || '', verifiedName: check.verified_name || '', callbackUrl, connected: true });
+          return json(res, 200, { channel: { provider: 'whatsapp', connected: true, phoneNumberId, displayPhoneNumber: check.display_phone_number || '', callbackUrl, verifyToken }, message: 'WhatsApp credentials verified. Add the callback URL and verification token in your Meta app webhook settings, then subscribe to messages.' });
+        } catch (e) { return json(res, e.status || 502, { error: e.message || 'WhatsApp connection failed.' }); }
+      }
+      if (req.method === 'POST' && p.endsWith('/disconnect') && ['telegram','whatsapp'].includes(provider)) {
+        const row = store.channels.get(uid, agentId, provider);
+        if (!row) return json(res, 404, { error: provider + ' is not connected.' });
+        if (provider === 'telegram') {
+          try { const secret = secretbox.decrypt(row.encrypted); await fetch('https://api.telegram.org/bot' + secret.botToken + '/deleteWebhook', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ drop_pending_updates: false }), signal: AbortSignal.timeout(8000) }); } catch {}
+        }
+        store.channels.del(uid, agentId, provider);
+        return json(res, 200, { ok: true, message: provider + ' disconnected.' });
+      }
+      return json(res, 404, { error: 'Channel route not found.' });
+    }
 
     /* ---- outbound Direct Call: agent voice over a real phone network ---- */
     if (p === '/api/telephony/status' && req.method === 'GET') {
