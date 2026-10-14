@@ -19,6 +19,7 @@ function systemPrompt(agent) {
     `You are "${agent.name}", a character agent on the Reachmark Audio platform.`,
     agent.role ? `Role: ${agent.role}.` : '',
     agent.persona ? `Personality & tone: ${agent.persona}. Stay in character at all times.` : '',
+    agent.memory ? `Persistent agent memory and operating context (treat as user-approved facts; update your response using this context):\n${String(agent.memory).slice(0,3000)}` : '',
     `Answer using the knowledge base below when relevant. If a fact is not in your brief, say so honestly in character and suggest the user contacts support.`,
     `Stay fully in character. Your replies are spoken aloud in your own voice: natural and conversational, no markdown, no links, no emojis, no stage directions, 1-4 sentences (under 60 words) unless the user asks for more.`,
     kb ? `Knowledge base:\n${kb}` : '',
