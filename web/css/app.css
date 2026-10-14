@@ -948,8 +948,8 @@ input,textarea{user-select:text;-webkit-user-select:text}
 .dot-b{background:var(--orange);color:var(--orange);right:24%;top:42%;width:7px;height:7px}
 .dot-c{background:var(--cyan);color:var(--cyan);bottom:19%;left:38%;width:6px;height:6px}
 .wave-bars{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);height:22px;display:flex;align-items:center;gap:4px;opacity:.75}
-.wave-bars i{display:block;width:3px;height:calc(5px + (var(--bar) % 6)*2px);border-radius:5px;background:linear-gradient(to top,var(--violet),var(--lime));animation:waveBounce .8s ease-in-out infinite alternate;animation-delay:calc(var(--bar)*-55ms)}
-@keyframes waveBounce{to{height:calc(5px + (var(--bar) % 9)*2px);opacity:.55}}
+.wave-bars i{display:block;width:3px;border-radius:5px;background:linear-gradient(to top,var(--violet),var(--lime));transform-origin:center;animation:waveBounce .8s ease-in-out infinite alternate;animation-delay:calc(var(--bar)*-55ms)}
+@keyframes waveBounce{to{transform:scaleY(.48);opacity:.55}}
 .gate-feature-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .gate-feature-row span{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid color-mix(in srgb,var(--line2) 78%,transparent);border-radius:999px;background:color-mix(in srgb,var(--surface) 60%,transparent);color:var(--muted);font-size:11px;font-weight:650}
 .gate-feature-row svg{width:14px;height:14px;color:var(--lime)}
