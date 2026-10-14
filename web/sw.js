@@ -1,11 +1,11 @@
 /* Reachmark Audio — service worker
    PWABuilder checklist: registered at root scope, precached app shell, fetch handler with
    offline navigation fallback, cache-first static assets, network-only for API/auth. */
-const VERSION = 'reachmark-audio-v1.13.0';
+const VERSION = 'reachmark-audio-v1.14.0';
 const SHELL = [
   '/', '/index.html', '/css/app.css', '/manifest.webmanifest',
   '/js/main.js', '/js/core.js', '/js/audio.js', '/js/brain.js', '/js/auth.js', '/js/views-a.js', '/js/views-b.js', '/js/gl-bg.js',
-  '/assets/voice-app-icon.svg', '/assets/favicon.svg',
+  '/assets/voice-app-icon.svg', '/assets/favicon.svg', '/assets/icon-192.png', '/assets/icon-512.png',
   '/assets/icon-maskable-512.png', '/assets/icon-maskable-192.png',
   '/assets/shortcut-tts-96.png', '/assets/shortcut-match-96.png', '/assets/shortcut-support-96.png',
   '/widget.html', '/widget/quick-studio.ac.json',
