@@ -188,22 +188,42 @@ routes['/studio/tts'] = {
     if (sharedText) { ta.value = sharedText.slice(0, 2000); sessionStorage.removeItem('rm_share_text'); upd(); toast('Shared text loaded into the editor', 'text'); }
     if (sessionStorage.getItem('rm_note')) { sessionStorage.removeItem('rm_note'); setTimeout(() => ta.focus(), 350); toast('Voice note started — type or paste, then render', 'edit'); }
     const out = h('div', { class: 'stack' });
+    const status = h('p', { class: 'tiny muted', role: 'status', 'aria-live': 'polite' }, 'Ready to synthesize.');
     const gen = h('button', { class: 'btn primary block', onclick: async () => {
-      if (!ta.value.trim()) return toast('Type something first', 'edit');
+      const script = ta.value.trim();
+      if (!script) return toast('Type something first', 'edit');
       gen.replaceChildren(h('i', { class: 'spin' }), 'Synthesizing…'); gen.disabled = true;
+      status.textContent = 'Sending your script to the speech engine…';
+      const langName = (LANGS.find(l => l[0] === sel.lang) || LANGS[0])[2];
       try {
         const voiceId = sel.id?.startsWith('m:') ? null : sel.id;
         const model = sel.id?.startsWith('m:') ? sel.id.slice(2) : null;
-        const { url, savedUrl } = await serverTTS({ text: ta.value, voiceId, model, semitones: sel.semitones, rate: sel.rate, fx: sel.fx, lang: sel.lang, save: true });
+        const { url, savedUrl } = await serverTTS({ text: script, voiceId, model, semitones: sel.semitones, rate: sel.rate, fx: sel.fx, lang: sel.lang, save: true });
+        status.textContent = 'Audio ready. Loading waveform and playback controls…';
         out.replaceChildren();
-        const langName = (LANGS.find(l => l[0] === sel.lang) || LANGS[0])[2];
         const { row, pl } = playerRow('Render · ' + langName, url); out.append(row);
         pl.play();
-        await pushHistory({ kind: 'tts', title: ta.value.slice(0, 42) + (ta.value.length > 42 ? '…' : ''), url: savedUrl, meta: langName });
+        status.textContent = 'Speech generated successfully' + (savedUrl ? ' and saved to your library.' : '.');
+        try {
+          await pushHistory({ kind: 'tts', title: script.slice(0, 42) + (script.length > 42 ? '…' : ''), url: savedUrl, meta: langName });
+        } catch {
+          status.textContent += ' History sync failed; the audio is still available above.';
+          toast('Audio generated, but history could not sync', 'refresh');
+        }
         toast('Rendered in ' + langName, 'spark');
       } catch (e) {
-        if (/credits/i.test(e.message)) toast(e.message, 'spark');
-        else { toast('Engine offline — using device voice', 'wave'); browserSpeak(ta.value, { rate: sel.rate, pitch: 1 + sel.semitones / 12 }); }
+        if (/credits/i.test(e.message)) {
+          status.textContent = 'Generation stopped: ' + e.message;
+          toast(e.message, 'spark');
+        } else {
+          status.textContent = 'Server synthesis failed. Trying your device speech engine; this fallback is not saved to your Reachmark library.';
+          toast('Server render unavailable — trying device speech', 'wave');
+          const played = await browserSpeak(script, { rate: sel.rate, pitch: 1 + sel.semitones / 12 });
+          if (!played) {
+            status.textContent = 'Speech generation failed. Check the engine status and try again.';
+            toast(e.message || 'Speech generation failed', 'close');
+          }
+        }
       } finally { gen.replaceChildren(icon('spark'), 'Generate speech'); gen.disabled = false; }
     } }, icon('spark'), 'Generate speech');
     const prompts = ['Announce a product launch', 'Bed-time story narrator', 'Movie trailer voice', 'Calm meditation guide'];
@@ -213,7 +233,7 @@ routes['/studio/tts'] = {
       h('label', { class: 'fld' }, 'Voice'), voicePicker(sel),
       langPicker(sel),
       exprControls(sel),
-      h('div', { style: { height: '16px' } }), gen, out));
+      h('div', { style: { height: '16px' } }), gen, status, out));
   },
 };
 
