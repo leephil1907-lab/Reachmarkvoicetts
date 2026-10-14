@@ -292,8 +292,25 @@ export async function renderRoute() {
   stag(node);
   if (old) {
     old.classList.add('leaving');
-    setTimeout(() => { old.remove(); wrap.append(node); afterMount(node, route, path); navigating = false; }, 150);
-  } else { wrap.append(node); afterMount(node, route, path); navigating = false; }
+    let finished = false;
+    const finishSwap = () => {
+      if (finished) return;
+      finished = true;
+      old.removeEventListener('animationend', onExit);
+      old.remove();
+      wrap.append(node);
+      afterMount(node, route, path);
+      navigating = false;
+    };
+    const onExit = event => { if (event.target === old) finishSwap(); };
+    old.addEventListener('animationend', onExit);
+    // Fallback for browsers that suppress CSS animation events (e.g. reduced motion).
+    setTimeout(finishSwap, matchMedia('(prefers-reduced-motion: reduce)').matches ? 40 : 240);
+  } else {
+    wrap.append(node);
+    afterMount(node, route, path);
+    navigating = false;
+  }
 }
 function afterMount(node, route, path) {
   $('#view').scrollTop = 0;
