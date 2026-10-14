@@ -227,6 +227,7 @@ async function waitUp(url, tries = 60) {
     group('Cloud engine merge (honest without keys)');
     r = await pub('GET', '/api/health');
     ok('health exposes elevenlabs + llmProvider', typeof r.j.elevenlabs === 'boolean' && 'llmProvider' in r.j);
+    ok('health exposes telephony and encrypted-channel readiness', typeof r.j.telephony === 'boolean' && typeof r.j.encryptedChannels === 'boolean');
     ok('no ELEVENLABS_API_KEY in tests → elevenlabs false', r.j.elevenlabs === false);
     r = await pub('GET', '/api/config');
     ok('config exposes engines block', !!r.j.engines && r.j.engines.elevenlabs === false);
