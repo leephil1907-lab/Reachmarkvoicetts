@@ -624,7 +624,7 @@ routes['/privacy'] = {
         'If a language-model provider is configured for character agents, the text of your agent messages (not your account data) is sent to that provider to produce the reply; with no provider configured, replies are generated on our own servers.',
       ]],
       ['4. Where data lives & who processes it', [
-        'Data is stored in a SQLite database and file volumes attached to our hosting provider (Render / Railway infrastructure, EU or your chosen region). Emails are delivered via our SMTP provider (Google Workspace/Gmail infrastructure) using an authenticated app password.',
+        'Data is stored in a SQLite database and file volumes attached to our hosting provider (Render / Railway infrastructure, EU or your chosen region). Transactional emails are delivered through the Resend HTTPS API when configured, with SMTP as a fallback; delivery failures are logged by the server.',
         'Staff access is role-based, requires two-factor authentication, and every access to user content (including listening to a sample) is click-confirmed and audit-logged.',
       ]],
       ['5. Retention & deletion', [
