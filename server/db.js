@@ -83,6 +83,8 @@ const users = {
     db.prepare('DELETE FROM admin_sessions WHERE uid=?').run(uid);
     db.prepare('DELETE FROM voices WHERE uid=?').run(uid);
     db.prepare('DELETE FROM agents WHERE uid=?').run(uid);
+    db.prepare('DELETE FROM agent_channels WHERE uid=?').run(uid);
+    db.prepare('DELETE FROM channel_conversations WHERE uid=?').run(uid);
     db.prepare('DELETE FROM history WHERE uid=?').run(uid);
     db.prepare('DELETE FROM renders WHERE uid=?').run(uid);
     db.prepare('DELETE FROM ledger WHERE uid=?').run(uid);
@@ -223,6 +225,33 @@ const config = {
 };
 
 
+
+/* ---------- encrypted messaging integrations + persistent per-contact context ---------- */
+db.exec(`
+CREATE TABLE IF NOT EXISTS agent_channels (
+  uid TEXT NOT NULL, agentId TEXT NOT NULL, provider TEXT NOT NULL, data TEXT NOT NULL, updated INTEGER NOT NULL,
+  PRIMARY KEY(uid, agentId, provider)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_channels_agent ON agent_channels(agentId, provider);
+CREATE TABLE IF NOT EXISTS channel_conversations (
+  uid TEXT NOT NULL, agentId TEXT NOT NULL, provider TEXT NOT NULL, remoteId TEXT NOT NULL, data TEXT NOT NULL, updated INTEGER NOT NULL,
+  PRIMARY KEY(provider, agentId, remoteId)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_conversations_owner ON channel_conversations(uid, agentId, updated);
+`);
+const channels = {
+  set: (uid, agentId, provider, data) => { db.prepare('INSERT OR REPLACE INTO agent_channels (uid,agentId,provider,data,updated) VALUES (?,?,?,?,?)').run(uid, agentId, provider, JSON.stringify(data), Date.now()); return data; },
+  get: (uid, agentId, provider) => { const r = db.prepare('SELECT data FROM agent_channels WHERE uid=? AND agentId=? AND provider=?').get(uid, agentId, provider); return r ? JSON.parse(r.data) : null; },
+  getAny: (agentId, provider) => { const r = db.prepare('SELECT uid,data FROM agent_channels WHERE agentId=? AND provider=?').get(agentId, provider); return r ? { uid: r.uid, data: JSON.parse(r.data) } : null; },
+  list: (uid, agentId) => db.prepare('SELECT provider,data,updated FROM agent_channels WHERE uid=? AND agentId=?').all(uid, agentId).map(r => ({ provider: r.provider, data: JSON.parse(r.data), updated: r.updated })),
+  del: (uid, agentId, provider) => db.prepare('DELETE FROM agent_channels WHERE uid=? AND agentId=? AND provider=?').run(uid, agentId, provider).changes === 1,
+  delAgent: (uid, agentId) => { db.prepare('DELETE FROM agent_channels WHERE uid=? AND agentId=?').run(uid, agentId); db.prepare('DELETE FROM channel_conversations WHERE uid=? AND agentId=?').run(uid, agentId); },
+};
+const conversations = {
+  get: (provider, agentId, remoteId) => { const r = db.prepare('SELECT uid,data FROM channel_conversations WHERE provider=? AND agentId=? AND remoteId=?').get(provider, agentId, String(remoteId)); return r ? { uid: r.uid, ...JSON.parse(r.data) } : null; },
+  save: (uid, agentId, provider, remoteId, data) => db.prepare('INSERT OR REPLACE INTO channel_conversations (uid,agentId,provider,remoteId,data,updated) VALUES (?,?,?,?,?,?)').run(uid, agentId, provider, String(remoteId), JSON.stringify(data), Date.now()),
+};
+
 /* ---------- outbound voice calls + short-lived audio media ---------- */
 db.exec(`
 CREATE TABLE IF NOT EXISTS outbound_calls (
@@ -246,4 +275,4 @@ const calls = {
   removeMediaForCall: callId => db.prepare('DELETE FROM call_media WHERE callId=?').run(callId),
 };
 
-module.exports = { calls, db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config, pushSubs, upgradeReq };
+module.exports = { calls, channels, conversations, db, DATA_DIR, users, enforceTrial, chargeTx, refundTx, adjustTx, addMinutesTx, ledger, sessions, adminSessions, rateLimit, lockout, registerFailure, clearFailures, voices, agents, history, renders, audit, auditList, support, config, pushSubs, upgradeReq };
