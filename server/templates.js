@@ -17,8 +17,8 @@ function wrap(title, bodyHtml, preheader) {
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e3e1da">
   <tr><td style="background:#151310;padding:22px 28px">
-    <span style="font-size:22px">🎙️</span>
-    <span style="color:#f2f5ee;font-size:17px;font-weight:800;letter-spacing:.02em;margin-left:8px">Reachmark Audio</span>
+    <span style="display:inline-block;vertical-align:middle;width:34px;height:34px;line-height:32px;text-align:center;border:1.5px solid #d3f36b;border-radius:7px;color:#d3f36b;font-family:Arial,Helvetica,sans-serif;font-size:23px;font-weight:800;box-sizing:border-box">R</span>
+    <span style="color:#f2f5ee;font-size:17px;font-weight:800;letter-spacing:.02em;margin-left:9px;vertical-align:middle">Reachmark Audio</span>
     <span style="color:#d3f36b;font-size:11px;font-weight:700;letter-spacing:.14em;margin-left:10px;text-transform:uppercase">by ${COMPANY}</span>
     <div style="height:3px;background:linear-gradient(90deg,#d3f36b,#63d9ff);border-radius:2px;margin-top:14px"></div>
   </td></tr>
