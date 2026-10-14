@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Reachmark Voice app icon</title>
+  <rect width="512" height="512" rx="112" fill="#C9F36A"/>
+  <path fill="#171812" d="M105 388V124h132c79 0 119 39 119 101 0 45-22 75-64 91l76 72h-91l-68-68h-28v68zm76-137h53c31 0 47-9 47-29s-16-29-47-29h-53z"/>
+  <g fill="#171812">
+    <rect x="365" y="226" width="19" height="60" rx="9.5"/>
+    <rect x="393" y="194" width="19" height="124" rx="9.5"/>
+    <rect x="421" y="214" width="19" height="84" rx="9.5"/>
+    <rect x="449" y="237" width="19" height="38" rx="9.5"/>
+  </g>
+</svg>
