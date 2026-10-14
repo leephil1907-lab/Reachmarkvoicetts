@@ -69,43 +69,95 @@ export class Player {
   constructor(canvas, pbtn, timeEl) {
     this.canvas = canvas; this.pbtn = pbtn; this.timeEl = timeEl;
     this.audio = new Audio(); this.audio.preload = 'metadata';
-    this.peaks = null; this.playing = false;
+    this.peaks = null; this.playing = false; this.fallbackDuration = 0;
+    if (canvas) {
+      canvas.setAttribute('role', 'slider');
+      canvas.setAttribute('tabindex', '0');
+      canvas.setAttribute('aria-label', 'Audio waveform. Use left and right arrow keys to seek.');
+      canvas.setAttribute('aria-valuemin', '0');
+      canvas.setAttribute('aria-valuemax', '0');
+      canvas.setAttribute('aria-valuenow', '0');
+      canvas.style.cursor = 'pointer';
+    }
+    this.pbtn?.setAttribute('aria-label', 'Play audio');
     this.pbtn?.addEventListener('click', () => this.playing ? this.pause() : this.play());
     canvas?.addEventListener('click', e => {
-      if (!this.audio.duration) return;
       const r = canvas.getBoundingClientRect();
-      this.audio.currentTime = ((e.clientX - r.left) / r.width) * this.audio.duration;
-      if (!this.playing) this.play();
+      this.seekToRatio((e.clientX - r.left) / Math.max(1, r.width));
     });
-    this.audio.addEventListener('ended', () => this.setPlaying(false));
+    canvas?.addEventListener('keydown', e => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) return;
+      e.preventDefault();
+      const duration = this.duration();
+      if (!duration) return;
+      if (e.key === 'Home') this.audio.currentTime = 0;
+      else if (e.key === 'End') this.audio.currentTime = duration;
+      else {
+        const step = e.shiftKey || e.key.startsWith('Page') ? 5 : 1;
+        this.audio.currentTime = Math.max(0, Math.min(duration, this.audio.currentTime + (e.key === 'ArrowLeft' || e.key === 'PageDown' ? -step : step));
+      }
+      this.updateTime(); this.draw();
+    });
+    this.audio.addEventListener('loadedmetadata', () => { this.updateTime(); this.draw(); });
+    this.audio.addEventListener('durationchange', () => { this.updateTime(); this.draw(); });
+    this.audio.addEventListener('timeupdate', () => { this.updateTime(); this.draw(); });
+    this.audio.addEventListener('ended', () => { this.setPlaying(false); this.audio.currentTime = 0; this.updateTime(); this.draw(); });
     this.audio.addEventListener('play', () => this.setPlaying(true));
     this.audio.addEventListener('pause', () => this.setPlaying(false));
+    this.audio.addEventListener('error', () => {
+      if (this.url) toast('Audio could not be loaded. Try generating it again.', 'close');
+      this.setPlaying(false);
+    });
     this.raf = null;
   }
   setPlaying(p) {
     this.playing = p;
-    if (this.pbtn) this.pbtn.innerHTML = p ? icons.pause : icons.play;
-    if (p) this.tick(); else { cancelAnimationFrame(this.raf); this.draw(); }
+    if (this.pbtn) {
+      this.pbtn.innerHTML = p ? icons.pause : icons.play;
+      this.pbtn.setAttribute('aria-label', p ? 'Pause audio' : 'Play audio');
+    }
+    if (p) this.tick(); else { cancelAnimationFrame(this.raf); this.updateTime(); this.draw(); }
   }
   async load(url) {
-    this.url = url; this.audio.src = url;
+    this.url = url; this.audio.src = url; this.audio.load();
     try {
       const { mono } = await decodeToMono(url);
       this.peaks = peaksOf(mono, 96);
       this.mono = mono;
     } catch { this.peaks = null; }
-    this.draw();
+    this.draw(); this.updateTime();
     return this;
   }
-  loadPeaks(peaks, duration) { this.peaks = peaks; this.audio.duration = duration; this.draw(); }
-  play() { AC?.resume?.(); this.audio.play().catch(() => toast('Playback blocked', 'close')); }
+  duration() { return Number.isFinite(this.audio.duration) ? this.audio.duration : this.fallbackDuration; }
+  seekToRatio(ratio) {
+    const duration = this.duration();
+    if (!duration) return;
+    this.audio.currentTime = Math.max(0, Math.min(1, ratio)) * duration;
+    this.updateTime(); this.draw();
+    if (!this.playing) this.play();
+  }
+  updateTime() {
+    const duration = this.duration(), current = Math.min(this.audio.currentTime || 0, duration || 0);
+    if (this.timeEl) this.timeEl.textContent = fmt(current) + ' / ' + fmt(duration);
+    if (this.canvas) {
+      this.canvas.setAttribute('aria-valuemax', String(Math.round(duration)));
+      this.canvas.setAttribute('aria-valuenow', String(Math.round(current)));
+      this.canvas.setAttribute('aria-valuetext', fmt(current) + ' of ' + fmt(duration));
+    }
+  }
+  loadPeaks(peaks, duration) { this.peaks = peaks; this.fallbackDuration = Math.max(0, Number(duration) || 0); this.updateTime(); this.draw(); }
+  play() {
+    if (!this.url && !this.audio.src) return;
+    AC?.resume?.();
+    this.audio.play().catch(() => toast('Playback could not start. Tap play again to retry.', 'close'));
+  }
   pause() { this.audio.pause(); }
-  stop() { this.pause(); this.audio.currentTime = 0; }
-  destroy() { this.pause(); cancelAnimationFrame(this.raf); }
+  stop() { this.pause(); this.audio.currentTime = 0; this.updateTime(); this.draw(); }
+  destroy() { this.pause(); cancelAnimationFrame(this.raf); this.audio.removeAttribute('src'); this.audio.load(); }
   tick() {
     const step = () => {
       this.draw();
-      if (this.timeEl) this.timeEl.textContent = fmt(this.audio.currentTime) + ' / ' + fmt(this.audio.duration || 0);
+      this.updateTime();
       if (this.playing) this.raf = requestAnimationFrame(step);
     };
     step();
@@ -120,7 +172,8 @@ export class Player {
     g.clearRect(0, 0, w, hh);
     const peaks = this.peaks || new Array(96).fill(0.12);
     const n = peaks.length, bw = w / n;
-    const prog = this.audio.duration ? this.audio.currentTime / this.audio.duration : 0;
+    const duration = this.duration();
+    const prog = duration ? this.audio.currentTime / duration : 0;
     const cs = getComputedStyle(document.documentElement);
     for (let i = 0; i < n; i++) {
       const p = peaks[i], bh = Math.max(2, p * (hh - 6));
