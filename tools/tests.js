@@ -195,9 +195,9 @@ async function waitUp(url, tries = 60) {
 
     /* ---------- agent chat (server route, local fallback, charging) ---------- */
     group('Character agent chat');
-    r = await pub('POST', '/api/agents', { name: 'Test Bot', role: 'tester', persona: 'concise', knowledge: ['The lab is open 24/7.'], greeting: 'Hi!', emoji: '🤖', traits: ['warm'], language: 'en' });
+    r = await pub('POST', '/api/agents', { name: 'Test Bot', role: 'tester', persona: 'concise', knowledge: ['The lab is open 24/7.'], memory: 'Remember that this is a test environment.', greeting: 'Hi!', emoji: '🤖', traits: ['warm'], language: 'en' });
     const agentId = r.j?.agent?.id;
-    ok('agent created with v1.3 fields', r.status === 200 && r.j.agent.emoji === '🤖' && r.j.agent.language === 'en');
+    ok('agent created with v1.3 fields and memory', r.status === 200 && r.j.agent.emoji === '🤖' && r.j.agent.language === 'en' && r.j.agent.memory === 'Remember that this is a test environment.');
     const before = (await pub('GET', '/api/auth/me')).j.user.credits;
     r = await pub('POST', '/api/agent/chat', { agentId, message: 'When is the lab open?', history: [] });
     ok('chat → 200 with content', r.status === 200 && typeof r.j.content === 'string' && r.j.content.length > 3);
@@ -211,6 +211,17 @@ async function waitUp(url, tries = 60) {
     ok('platform Guide chat is free', afterGuide === after);
     r = await pub('POST', '/api/agent/chat', { agentId: 'nope', message: 'hi' });
     ok('unknown agent → 404', r.status === 404);
+    r = await pub('GET', '/api/agents/' + agentId + '/channels');
+    ok('agent channel settings are owner-scoped and list safely', r.status === 200 && Array.isArray(r.j.channels) && r.j.encryptionConfigured === false);
+    r = await pub('POST', '/api/agents/' + agentId + '/channels/telegram', { botToken: '123456789:abcdefghijklmnopqrstuvwxyz1234567890' });
+    ok('Telegram refuses to store secrets without encryption key', r.status === 503 && /APP_ENCRYPTION_KEY/.test(r.j.error));
+    r = await pub('POST', '/api/agents/' + agentId + '/channels/whatsapp', { phoneNumberId: '12345678', accessToken: 'x'.repeat(32), appSecret: 'y'.repeat(32) });
+    ok('WhatsApp refuses to store secrets without encryption key', r.status === 503 && /APP_ENCRYPTION_KEY/.test(r.j.error));
+    r = await pub('GET', '/api/telephony/status');
+    ok('Direct Call reports provider readiness honestly', r.status === 200 && r.j.configured === false && Array.isArray(r.j.calls));
+    r = await pub('POST', '/api/telephony/calls', { agentId, toNumber: '+14155550123', mode: 'live', durationSec: 60, consent: true });
+    ok('outbound calling remains disabled without Twilio credentials', r.status === 503 && /Twilio/.test(r.j.error));
+
 
     /* ---------- 5b. cloud engine merge (ElevenLabs Voice Design + Claude agents) ---------- */
     group('Cloud engine merge (honest without keys)');
