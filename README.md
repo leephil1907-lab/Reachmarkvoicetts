@@ -223,7 +223,7 @@ reachmark-audio/
 │   └── assets/ icons (96/192/512 + maskable), favicon.svg
 ├── desktop/           # Electron shell (VoiceStudio packaging pattern)
 ├── engines/           # download-voices.sh (Piper models live on DATA_DIR disk)
-├── tools/pwa-audit.js # local PWABuilder-style checklist (29/29)
+├── tools/pwa-audit.js # local PWA manifest, service-worker & security checklist
 ├── tools/tests.js     # v1.3 integration suite (77 assertions, both servers)
 ├── vendor/            # the five imported repositories (pristine clones, not published)
 ├── Dockerfile  docker-entrypoint.sh  render.yaml  package.json
@@ -274,12 +274,8 @@ notifications; admins send from Site control, every send audited), **background 
 (offline support messages queue in IndexedDB and replay on `sync`), and **periodic sync**
 (daily refresh of the public voice catalog for offline browsing).
 
-`tools/pwa-audit.js` mirrors all 46 PWABuilder manifest capabilities locally:
-**42/46 pass**. The four outstanding items are deliberate, never fabricated:
-
-1. `related_applications` — needs a real native/store listing (add its Play/Store id once packaged).
-2. `iarc_rating_id` — a content-rating certificate issued during store onboarding (add the id when issued).
-3. `scope_extensions` — needs a second origin you control plus its well-known verification file.
-4. `tabbed_display` — intentionally NOT declared: `display_override` is `["standalone",
-   "window-controls-overlay"]` so an installed app never shows browser tab/URL chrome on
-   any device. Declaring `tabbed` would score a point and put the address bar back.
+`tools/pwa-audit.js` runs a local checklist over manifest metadata, icon dimensions, offline caching,
+installability, security headers and platform integrations. Run `npm run audit:pwa` to see the
+current measured results; do not treat this local checklist as a substitute for a browser-based
+Lighthouse or store review. Native-store IDs and cross-origin capabilities must only be added once
+real listings and controlled domains exist.
