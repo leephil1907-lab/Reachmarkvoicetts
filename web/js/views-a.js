@@ -149,7 +149,7 @@ routes['/home'] = {
     const planLabel = db.user?.plan === 'plus' ? 'Plus plan' : 'Free plan';
     node.append(h('div', { 'data-stag': '' },
       h('div', { class: 'dash-head' },
-        h('img', { class: 'dash-logo', src: '/assets/logo-192.png', alt: 'Reachmark Audio' }),
+        h('span', { class: 'dash-logo brand-mark', html: icons.brandMark, 'aria-label': 'Reachmark Audio' }),
         h('div', { class: 'dh-txt' },
           h('h2', {}, greet + ', ' + first),
           h('p', { class: 'muted tiny' }, new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })),
