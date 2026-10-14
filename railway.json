@@ -36,6 +36,9 @@
     "ANTHROPIC_API_KEY": "",
     "CLAUDE_MODEL": "claude-sonnet-5-5",
     "TTS_MODEL": "eleven_multilingual_v2",
-    "PIPER_FETCH_ON_BOOT": "1"
+    "PIPER_FETCH_ON_BOOT": "1",
+    "TWILIO_ACCOUNT_SID": "",
+    "TWILIO_AUTH_TOKEN": "",
+    "TWILIO_FROM_NUMBER": ""
   }
 }
