@@ -39,6 +39,8 @@
     "PIPER_FETCH_ON_BOOT": "1",
     "TWILIO_ACCOUNT_SID": "",
     "TWILIO_AUTH_TOKEN": "",
-    "TWILIO_FROM_NUMBER": ""
+    "TWILIO_FROM_NUMBER": "",
+    "APP_ENCRYPTION_KEY": "",
+    "WHATSAPP_GRAPH_VERSION": "v23.0"
   }
 }
