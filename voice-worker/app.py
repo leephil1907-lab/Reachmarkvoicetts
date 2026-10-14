@@ -173,11 +173,9 @@ def synthesize(body: SynthesizeRequest, x_worker_token: str | None = Header(defa
     if not text:
         raise HTTPException(status_code=400, detail="Text is required.")
     try:
-        from cosyvoice.utils.file_utils import load_wav
-        prompt_speech_16k = load_wav(str(reference_path), 16000)
-        instruction = STYLE_INSTRUCTIONS[body.style] + " " + PACING_INSTRUCTIONS[body.pacing]
+        instruction = "You are a helpful assistant. " + STYLE_INSTRUCTIONS[body.style] + " " + PACING_INSTRUCTIONS[body.pacing] + "<|endofprompt|>"
         with engine_lock:
-            chunks = list(model.inference_instruct2(text, instruction, prompt_speech_16k, stream=False))
+            chunks = list(model.inference_instruct2(text, instruction, str(reference_path), stream=False))
         if not chunks:
             raise RuntimeError("CosyVoice returned no audio chunks.")
         speech = torch.cat([chunk["tts_speech"].detach().cpu() for chunk in chunks], dim=-1)
