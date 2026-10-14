@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'admin/**'
+      - 'web/sw.js'
       - 'voice-worker/**'
       - '.github/workflows/voice-lab-checks.yml'
   workflow_dispatch:
