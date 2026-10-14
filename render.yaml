@@ -49,7 +49,16 @@ services:
         sync: false            # e.g. reachmarkofficial@gmail.com
       - key: SMTP_PASS
         sync: false            # Gmail APP password (16 chars, no spaces)
-      # ---- character agents: any OpenAI-compatible provider ----
+      # ---- character agents (Claude) + your own Voice Engine for cloning ----
+      - key: ANTHROPIC_API_KEY
+        sync: false            # REQUIRED for real agent chat — without it agents give canned offline replies
+      - key: CLAUDE_MODEL
+        sync: false            # default claude-sonnet-5-5
+      - key: VOICE_ENGINE_URL
+        sync: false            # your self-hosted engine, e.g. http://voice-engine:8100 (see engines/voice-engine/README.md)
+      - key: VOICE_ENGINE_TOKEN
+        sync: false            # long random secret shared with the engine
+      # ---- optional: any OpenAI-compatible provider instead of Claude ----
       - key: LLM_API_KEY
         sync: false            # without it, agents fall back to the local persona brain
       - key: LLM_BASE_URL

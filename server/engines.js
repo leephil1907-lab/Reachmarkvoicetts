@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const tts = require('./tts');
-const el = require('./elevenlabs');
+const ve = require('./voiceengine');
 const llm = require('./llm');
 
 const VENDOR = path.join(__dirname, '..', 'vendor');
@@ -42,10 +42,10 @@ const ENGINES = [
     kind: 'gpu',
   },
   {
-    id: 'elevenlabs', name: 'ElevenLabs Voice Design & TTS', repo: 'api.elevenlabs.io (cloud)',
-    role: 'Real text-to-voice design: describe a voice, hear three generated previews, keep the one you like. Multilingual neural TTS (eleven_multilingual_v2) for designed voices, agents and calls.',
-    components: ['/v1/text-to-voice/design previews', '/v1/text-to-voice save', '/v1/text-to-speech render'],
-    kind: 'cloud',
+    id: 'voice-engine', name: 'Reachmark Voice Engine', repo: 'engines/voice-engine (self-hosted, MIT)',
+    role: 'Zero-shot voice cloning + multilingual neural TTS (23 languages) running on your own server. Powers cloned voices in TTS, agents and calls.',
+    components: ['Chatterbox Multilingual (MIT)', 'FastAPI service', 'bearer-token auth'],
+    kind: 'selfhosted',
   },
   {
     id: 'anthropic', name: 'Anthropic Claude', repo: 'api.anthropic.com (cloud)',
@@ -76,17 +76,17 @@ function torchAvailable() {
 async function status() {
   const models = tts.catalog();
   const torch = await torchAvailable();
-  return ENGINES.map(e => {
+  return Promise.all(ENGINES.map(async e => {
     let state = 'offline', detail = '';
     const vendored = e.dir ? fs.existsSync(path.join(VENDOR, e.dir)) : false;
     if (e.id === 'reachmark-core') { state = 'online'; detail = 'serving'; }
     else if (e.id === 'piper') { const st = tts.status(); state = st.ready ? 'online' : 'offline'; detail = st.voices + ' neural voices loaded · 30s synth guard · queue capped'; }
-    else if (e.id === 'elevenlabs') { state = el.configured() ? 'online' : 'standby'; detail = el.configured() ? 'cloud · ' + el.model() : 'ELEVENLABS_API_KEY not set — local trait parser + piper stay in charge'; }
+    else if (e.id === 'voice-engine') { const h = ve.configured() ? await ve.health() : null; state = h ? 'online' : (ve.configured() ? 'offline' : 'standby'); detail = h ? 'self-hosted · ' + h.device + ' · ' + (h.languages || []).length + ' languages' : (ve.configured() ? 'configured but not answering' : 'VOICE_ENGINE_URL not set — cloning falls back to basic Voice Match'); }
     else if (e.id === 'anthropic') { const on = llm.provider() === 'anthropic'; state = on ? 'online' : (llm.configured() ? 'online' : 'standby'); detail = on ? 'cloud · ' + llm.model() : (llm.configured() ? 'cloud · ' + llm.model() + ' (OpenAI-compatible)' : 'ANTHROPIC_API_KEY not set — on-device persona brain answers'); }
     else if (e.kind === 'gpu') { state = torch ? 'ready' : 'standby'; detail = torch ? 'torch ' + torch : 'needs GPU/torch — CPU fallback active'; }
     else if (e.id === 'voicestudio') { state = 'merged'; detail = 'patterns ported into UI + desktop shell'; }
     return { ...e, vendored, state, detail };
-  });
+  }));
 }
 
 module.exports = { ENGINES, status, VENDOR };

@@ -13,7 +13,7 @@ const tts = require('./tts');
 const engines = require('./engines');
 const store = require('./db');
 const llm = require('./llm');
-const el = require('./elevenlabs');
+const ve = require('./voiceengine');
 const brainS = require('./brain');
 const mail = require('./mail');
 const pushlib = require('./pushlib');
@@ -49,7 +49,7 @@ function voiceDoc(b) {
     desc: str(b.desc, 500) || '',
     tags: arrStr(b.tags, 10, 24),
     model: str(b.model, 64) || null,
-    engine: oneOf(str(b.engine, 12), ['piper', 'elevenlabs'], 'piper'),
+    engine: oneOf(str(b.engine, 12), ['piper', 'own'], 'piper'),
     engineVoiceId: str(b.engineVoiceId, 64) || null,
     semitones: num(b.semitones, -12, 12, 0),
     rate: num(b.rate, 0.5, 2, 1),
@@ -85,9 +85,9 @@ function guideAgent() {
     greeting: 'Hi! I am the Reachmark Guide — I know every studio, engine and shortcut on this platform. What would you like to do today?',
     voiceId: null, model: null, created: Date.now(),
     knowledge: [
-      'Credits: every new account starts with 10,000 credits. TTS costs about 1 credit per 40 characters, voice change 20, Voice Match 150, Quick Vocal Remove 30, dubbing 15 per take.',
+      'Credits: every new account starts with 10,000 credits. TTS costs about 1 credit per 40 characters, voice change 20, Voice Clone 150, Quick Vocal Remove 30, dubbing 15 per take.',
       'Plans: Free includes 3 voice slots and core studios. Plus adds 200 minutes of generation, 10 private voice slots and commercial use — one 7-day trial per account, from Account → Upgrade.',
-      'Voice Match (Create → Voice Match): records 10 seconds (or an upload), analyses pitch and pace, and configures the nearest neural voice to sound like you. It is a fast voice match, not a speaker-embedding clone — true cloning engines (XTTS/OpenVoice) plug into the same endpoint when a GPU runtime is attached.',
+      'Voice Clone (Create → Voice Clone): record or upload 10-30 seconds of clear speech, tick the consent box (the voice must be yours or you need the speaker\'s permission) and the cloned voice can speak 23 languages in Text to Speech, agents and calls. If the cloning engine is offline the app falls back to a basic pitch-and-pace match and says so.',
       'Voice translation: any voice — including matched voices — can speak in English, French, Spanish or German. Pick the output language in Text to Speech; your voice character (pitch, pace, colour) carries across languages.',
       'Voice Changer: upload or record, then apply presets (Deep, Sub, Bright, Air), fine pitch in semitones, speed and expression colours (Robot, Radio, Echo). Conversion runs on the Core DSP engine.',
       'Voice Design: describe a voice in plain text — e.g. warm deep male narrator with vintage radio colour — and the trait parser builds it. Preview before saving.',
@@ -96,7 +96,7 @@ function guideAgent() {
       'Quick Vocal Remove: center-channel reduction for stereo mixes — it pulls centered vocals out and leaves a karaoke bus. Best on mixes with centered lead vocals; a Demucs-class separation engine plugs into the same endpoint when attached.',
       'Character agents: build a persona with a name, role, personality and knowledge base, then chat or place a live voice call — the agent answers from its brief and speaks with your chosen voice.',
       'Downloads: every render shows a download button. Renders are WAV files owned by your account; lip sync exports are WebM video.',
-      'History: everything you render is stored per account under Home → History tabs (TTS, Voice Changer, Quick Vocal Remove, Dubbing, Lip Sync, Voice Matches).',
+      'History: everything you render is stored per account under Home → History tabs (TTS, Voice Changer, Quick Vocal Remove, Dubbing, Lip Sync, Voice Clones).',
       'Engines: Reachmark Audio merges five engine codebases — Reachmark Core, Piper neural TTS, Real-Time-Voice-Cloning, MockingBird and ChatterBox — plus VoiceStudio patterns. Live status is in Account → Engine Hub.',
       'Privacy: voice samples and renders are stored only in your account workspace. Match or clone only voices you have rights to.',
       'Support: live chat and support sessions are in the Support Center (life-buoy button). Email reachmarkofficial@gmail.com or support@reachmarkdigital.com.',
@@ -109,7 +109,7 @@ function guideAgent() {
 
 /* ---------- http helpers ---------- */
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json', '.wav': 'audio/wav', '.webm': 'audio/webm', '.ico': 'image/x-icon', '.json': 'application/json' };
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; font-src 'self' https://fonts.gstatic.com data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
 
 function send(res, code, body, headers = {}) { res.writeHead(code, headers); res.end(body); }
 function json(res, code, obj, headers = {}) { send(res, code, JSON.stringify(obj), { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers }); }
@@ -205,7 +205,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     /* ---- public ---- */
-    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), llmProvider: llm.provider(), elevenlabs: el.configured(), mail: mail.configured(), time: Date.now() });
+    if (p === '/api/health') return json(res, 200, { ok: true, app: 'Reachmark Audio', version: '1.3.0', piper: tts.status(), db: 'sqlite', dataDir: store.DATA_DIR, llm: llm.configured(), llmProvider: llm.provider(), voiceEngine: ve.configured(), mail: mail.configured(), time: Date.now() });
     if (p === '/api/catalog') return json(res, 200, { models: tts.catalog() }); // public, cacheable by SW periodic sync
     if (p === '/api/config') return json(res, 200, {
       announcement: store.config.get('announcement'),
@@ -213,7 +213,7 @@ const server = http.createServer(async (req, res) => {
       signup_on: store.config.get('signup_on') === '1',
       flags: store.config.flags(), costs: store.config.costs(),
       default_voice: store.config.get('default_voice'),
-      engines: { elevenlabs: el.configured(), llm: llm.configured(), llmProvider: llm.provider() },
+      engines: { voiceEngine: ve.configured(), llm: llm.configured(), llmProvider: llm.provider() },
       mail: mail.configured(),
     });
 
@@ -396,6 +396,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (p.startsWith('/api/voices/') && req.method === 'DELETE') {
       const id = path.basename(p.split('/')[3]);
+      const gone = store.voices.get(uid, id);
       store.voices.del(uid, id);
       try { fs.unlinkSync(path.join(userSamplesDir(uid), id + '.wav')); } catch {}
       return json(res, 200, { ok: true });
@@ -459,22 +460,23 @@ const server = http.createServer(async (req, res) => {
           if (b.voiceId) {
             const v = store.voices.get(uid, str(b.voiceId, 40));
             if (v && v.disabled) throw Object.assign(new Error('This voice has been disabled by support.'), { status: 403 });
-            if (v && v.engine === 'elevenlabs') {
-              if (!el.configured()) throw Object.assign(new Error('This voice runs on the ElevenLabs cloud engine, which is not connected on this server (ELEVENLABS_API_KEY). Pick a local voice or ask support to connect it.'), { status: 503 });
-              if (!el.validVoiceId(v.engineVoiceId)) throw Object.assign(new Error('This voice has an unusable provider id — delete it and design a new one.'), { status: 422 });
-              return { ...opts, elVoiceId: v.engineVoiceId, elName: v.name };
+            if (v && v.engine === 'own') {
+              if (!ve.configured()) throw Object.assign(new Error('Cloned voices need the Reachmark Voice Engine, which is not connected on this server.'), { status: 503 });
+              const sp = path.join(userSamplesDir(uid), v.id + '.wav');
+              if (!fs.existsSync(sp)) throw Object.assign(new Error('The reference sample for this voice is missing — re-clone it.'), { status: 422 });
+              return { ...opts, ownSample: fs.readFileSync(sp), ownLang: (opts.lang && opts.lang !== 'auto' ? opts.lang : 'en') };
             }
             if (v) opts = { ...opts, model: v.model ?? opts.model, semitones: opts.semitones || v.semitones, rate: b.rate ? opts.rate : (v.rate || 1), fx: opts.fx === 'none' ? v.fx : opts.fx };
           }
-          if (!opts.elVoiceId && !tts.catalog().length) throw Object.assign(new Error('Speech engine has no voices installed on this server.'), { status: 503 });
+          if (!opts.ownSample && !tts.catalog().length) throw Object.assign(new Error('Speech engine has no voices installed on this server.'), { status: 503 });
           return opts;
         },
         async opts => {
-          if (opts.elVoiceId) {
-            const buf = await el.tts(opts.elVoiceId, opts.text);
-            const saved = b.save ? saveRender(buf, 'tts', uid, '.mp3') : null;
-            const seconds = buf.length / 16000; // ~128 kbps mp3 estimate
-            return { seconds, respond: () => send(res, 200, buf, { 'Content-Type': 'audio/mpeg', 'X-Reachmark-Url': saved || '', 'X-Reachmark-Voice': opts.elVoiceId, 'X-Reachmark-Engine': 'elevenlabs', ...creditHeader(user), 'Cache-Control': 'no-store' }) };
+          if (opts.ownSample) {
+            let buf = await ve.synth({ text: opts.text, lang: opts.ownLang, sample: opts.ownSample, uid });
+            if (opts.semitones || (opts.fx && opts.fx !== 'none')) { try { buf = tts.postProcess(buf, { semitones: opts.semitones, fx: opts.fx }); } catch {} }
+            const saved = b.save ? saveRender(buf, 'tts', uid) : null;
+            return { seconds: wavSeconds(buf), respond: () => send(res, 200, buf, { 'Content-Type': 'audio/wav', 'X-Reachmark-Url': saved || '', 'X-Reachmark-Engine': 'reachmark-voice-engine', ...creditHeader(user), 'Cache-Control': 'no-store' }) };
           }
           const { buf, voice } = await tts.synthesize(opts, uid);
           const saved = b.save ? saveRender(buf, 'tts', uid) : null;
@@ -521,6 +523,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/clone' && req.method === 'POST') {
       if (!needFlag('match')) return;
       const b = JSON.parse(await readBody(req));
+      if (b.consent !== true) return json(res, 400, { error: 'Please confirm the voice is yours or that you have permission to clone it.' });
+      if (!store.rateLimit('clone:' + uid, 6, 3600000)) return json(res, 429, { error: 'Clone limit reached (6 per hour) — try again later.' });
       return paid(res, user, costs.match || 150,
         () => {
           if (store.voices.list(uid).length >= slots) throw Object.assign(new Error('Voice slot limit reached on Free (3). Start the Plus trial from Account → Upgrade.'), { status: 402 });
@@ -528,52 +532,22 @@ const server = http.createServer(async (req, res) => {
           if (raw.length > MAX_UPLOAD) throw Object.assign(new Error('Upload too large — 20 MB max.'), { status: 413 });
           const audio = dsp.decodeWav(raw);
           const secs = audio.channels[0].length / audio.sampleRate;
-          if (secs < 2) throw Object.assign(new Error('Sample too short — record at least 2 seconds (10 recommended).'), { status: 422 });
+          if (secs < (ve.configured() ? 5 : 2)) throw Object.assign(new Error('Sample too short — record at least ' + (ve.configured() ? 5 : 2) + ' seconds (10-30 recommended).'), { status: 422 });
           return { raw, name: str(b.name, 60) || 'Matched voice', note: str(b.note, 200) };
         },
         async ctx => {
-          const profile = matchProfile(uid, ctx.name, ctx.raw, ctx.note);
-          return { seconds: 0, respond: () => json(res, 200, { voice: profile }, creditHeader(user)) };
-        });
-    }
-    /* ---- Voice Design (ElevenLabs cloud engine; honest 503 when not connected) ---- */
-    if (p === '/api/design/previews' && req.method === 'POST') {
-      if (!needFlag('design')) return;
-      if (!el.configured()) return json(res, 503, { error: 'Voice Design engine is not connected on this server (ELEVENLABS_API_KEY). The on-server trait parser still designs voices from your description.' });
-      const b = JSON.parse(await readBody(req, 2e6));
-      if (!store.rateLimit('design:' + uid, 10, 60000)) return json(res, 429, { error: 'Slow down — 10 design runs per minute.' });
-      return paid(res, user, costs.design || 25,
-        () => {
-          const description = String(b.description || '').trim();
-          if (description.length < 20 || description.length > 1000) throw Object.assign(new Error('Describe the voice in 20-1000 characters.'), { status: 400 });
-          const text = b.text ? String(b.text).trim() : '';
-          if (text && (text.length < 100 || text.length > 1000)) throw Object.assign(new Error('Custom preview script must be 100-1000 characters.'), { status: 400 });
-          return { description, text };
-        },
-        async ctx => {
-          const out = await el.designPreviews(ctx);
-          return { seconds: 0, respond: () => json(res, 200, { previews: out.previews, text: out.text, engine: 'elevenlabs', model: el.model() }, creditHeader(user)) };
-        });
-    }
-    if (p === '/api/design/save' && req.method === 'POST') {
-      if (!needFlag('design')) return;
-      if (!el.configured()) return json(res, 503, { error: 'Voice Design engine is not connected on this server (ELEVENLABS_API_KEY).' });
-      const b = JSON.parse(await readBody(req, 2e6));
-      return paid(res, user, costs.designSave || 50,
-        () => {
-          if (store.voices.list(uid).length >= slots) throw Object.assign(new Error('Voice slot limit reached on Free (3). Start the Plus trial from Account → Upgrade.'), { status: 402 });
-          const generatedVoiceId = String(b.generatedVoiceId || '').trim();
-          if (generatedVoiceId.length < 10 || generatedVoiceId.length > 128) throw Object.assign(new Error('Pick a generated preview first.'), { status: 400 });
-          const description = String(b.description || '').trim();
-          if (description.length < 20 || description.length > 1000) throw Object.assign(new Error('Keep the original 20-1000 character description.'), { status: 400 });
-          return { generatedVoiceId, description, name: str(b.name, 60) || 'Designed voice' };
-        },
-        async ctx => {
-          const { voiceId } = await el.saveDesigned(ctx);
-          const id = 'v_' + crypto.randomBytes(4).toString('hex');
-          const voice = { id, kind: 'design', name: ctx.name, desc: ctx.description, tags: ['elevenlabs', 'designed'], engine: 'elevenlabs', engineVoiceId: voiceId, model: null, semitones: 0, rate: 1, fx: 'none', created: Date.now() };
-          store.voices.add(uid, voice);
-          return { seconds: 0, respond: () => json(res, 201, { voice }, creditHeader(user)) };
+          let profile;
+          if (ve.configured()) {
+            // Zero-shot cloning on the self-hosted engine: keep the reference sample, verify the engine is alive.
+            if (!(await ve.health(true))) throw Object.assign(new Error('The Reachmark Voice Engine is offline right now — try again shortly.'), { status: 503 });
+            const id = 'v_' + crypto.randomBytes(4).toString('hex');
+            fs.writeFileSync(path.join(userSamplesDir(uid), id + '.wav'), ctx.raw);
+            profile = { id, name: ctx.name, kind: 'clone', note: ctx.note || '', desc: 'Cloned · Reachmark Voice Engine · 23 languages', tags: ['cloned'], engine: 'own', model: null, semitones: 0, rate: 1, fx: 'none', created: Date.now(), sample: '/api/voices/' + id + '/sample' };
+            store.voices.add(uid, profile);
+          } else {
+            profile = matchProfile(uid, ctx.name, ctx.raw, ctx.note);
+          }
+          return { seconds: 0, respond: () => json(res, 200, { voice: profile, engine: ve.configured() ? 'reachmark-voice-engine' : 'local-match' }, creditHeader(user)) };
         });
     }
     if (p.startsWith('/api/render/')) {
@@ -602,16 +576,20 @@ const server = http.createServer(async (req, res) => {
         ? b.history.slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: str(m.content, 1500) })).filter(m => m.content)
         : [];
       const run = async () => {
-        let out = null;
-        try { out = await llm.chat({ agent, history, message }); } catch {}
-        if (!out) out = { content: brainS.respond(agent, message), source: 'local' };
+        let out = null, warn = '';
+        try { out = await llm.chat({ agent, history, message }); }
+        catch (e) { console.error('[agent/chat] LLM error:', e.message); warn = 'AI engine error (' + String(e.message).slice(0, 120) + ') — answered with basic offline replies.'; }
+        if (!out) {
+          if (!warn) warn = 'No AI key is configured on this server (set ANTHROPIC_API_KEY) — answering with basic offline replies.';
+          out = { content: brainS.respond(agent, message), source: 'local', warn };
+        }
         return out;
       };
       if (agent.system) { const out = await run(); return json(res, 200, out); } // platform Guide is free
       const cost = costs.chat || 2;
       return paid(res, user, cost, () => ({}), async () => {
         const out = await run();
-        return { seconds: 0, respond: () => json(res, 200, { ...out, ...creditHeader(user) }) };
+        return { seconds: 0, respond: () => json(res, 200, out, creditHeader(user)) };
       });
     }
 

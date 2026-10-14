@@ -212,33 +212,29 @@ async function waitUp(url, tries = 60) {
     r = await pub('POST', '/api/agent/chat', { agentId: 'nope', message: 'hi' });
     ok('unknown agent → 404', r.status === 404);
 
-    /* ---------- 5b. cloud engine merge (ElevenLabs Voice Design + Claude agents) ---------- */
-    group('Cloud engine merge (honest without keys)');
+    /* ---------- 5b. self-hosted voice engine + Claude agents (honest without config) ---------- */
+    group('Voice engine + agents (honest without config)');
     r = await pub('GET', '/api/health');
-    ok('health exposes elevenlabs + llmProvider', typeof r.j.elevenlabs === 'boolean' && 'llmProvider' in r.j);
-    ok('no ELEVENLABS_API_KEY in tests → elevenlabs false', r.j.elevenlabs === false);
+    ok('health exposes voiceEngine + llmProvider', typeof r.j.voiceEngine === 'boolean' && 'llmProvider' in r.j);
+    ok('no VOICE_ENGINE_URL in tests → voiceEngine false', r.j.voiceEngine === false);
     r = await pub('GET', '/api/config');
-    ok('config exposes engines block', !!r.j.engines && r.j.engines.elevenlabs === false);
-    r = await pub('POST', '/api/design/previews', { description: 'A warm deep male narrator with vintage radio colour and slow calm pacing.' });
-    ok('design previews without engine → honest 503', r.status === 503 && /not connected/i.test(r.j.error));
-    r = await pub('POST', '/api/design/save', { generatedVoiceId: 'abcdefghijklmnop', description: 'A warm deep male narrator with vintage radio colour.' });
-    ok('design save without engine → honest 503', r.status === 503 && /not connected/i.test(r.j.error));
-    r = await pub('POST', '/api/voices', { kind: 'design', name: 'EL voice', desc: 'cloud-designed', engine: 'elevenlabs', engineVoiceId: 'ELV0123456789abcdef' });
-    const elVoiceId = r.j?.voice?.id;
-    ok('voiceDoc keeps engine + engineVoiceId', r.status === 200 && r.j.voice.engine === 'elevenlabs' && r.j.voice.engineVoiceId === 'ELV0123456789abcdef');
+    ok('config exposes engines block', !!r.j.engines && r.j.engines.voiceEngine === false);
+    r = await pub('POST', '/api/voices', { kind: 'clone', name: 'Own voice', desc: 'self-hosted', engine: 'own' });
+    const ownVoiceId = r.j?.voice?.id;
+    ok('voiceDoc keeps engine own', r.status === 200 && r.j.voice.engine === 'own');
     r = await pub('POST', '/api/voices', { kind: 'design', name: 'Bogus engine', engine: 'nonsense' });
     ok('unknown engine whitelisted to piper', r.status === 200 && r.j.voice.engine === 'piper');
     if (r.j?.voice?.id) await pub('DELETE', '/api/voices/' + r.j.voice.id);
-    r = await pub('POST', '/api/tts', { text: 'Hello there.', voiceId: elVoiceId });
-    ok('tts on cloud voice without key → honest 503', r.status === 503 && /ELEVENLABS_API_KEY/i.test(r.j.error));
+    r = await pub('POST', '/api/tts', { text: 'Hello there.', voiceId: ownVoiceId });
+    ok('tts on cloned voice without engine → honest 503', r.status === 503 && /Voice Engine/i.test(r.j.error));
     const creditsAfterTts503 = (await pub('GET', '/api/auth/me')).j.user.credits;
-    r = await pub('POST', '/api/tts', { text: 'Hello there.', voiceId: elVoiceId });
-    ok('failed cloud tts never charges', (await pub('GET', '/api/auth/me')).j.user.credits === creditsAfterTts503);
-    if (elVoiceId) await pub('DELETE', '/api/voices/' + elVoiceId);
+    r = await pub('POST', '/api/tts', { text: 'Hello there.', voiceId: ownVoiceId });
+    ok('failed cloned tts never charges', (await pub('GET', '/api/auth/me')).j.user.credits === creditsAfterTts503);
+    if (ownVoiceId) await pub('DELETE', '/api/voices/' + ownVoiceId);
     r = await pub('GET', '/api/engines');
-    const elEng = (r.j.engines || []).find(e => e.id === 'elevenlabs');
+    const veEng = (r.j.engines || []).find(e => e.id === 'voice-engine');
     const clEng = (r.j.engines || []).find(e => e.id === 'anthropic');
-    ok('Engine Hub lists elevenlabs + anthropic as standby', !!elEng && !!clEng && elEng.state === 'standby' && clEng.state === 'standby');
+    ok('Engine Hub lists voice-engine + anthropic as standby', !!veEng && !!clEng && veEng.state === 'standby' && clEng.state === 'standby');
 
     /* ---------- 5c. plus upgrades: request -> staff approval (never self-service) ---------- */
     group('Plus upgrades are staff-approved only');

@@ -738,3 +738,105 @@ input,textarea{user-select:text;-webkit-user-select:text}
 .pend small{color:var(--muted);font-size:12px;line-height:1.55}
 .avatar>.ico{width:22px;height:22px;display:grid}
 .avatar>.ico svg{width:100%;height:100%}
+
+/* =====================================================================
+   DESIGN v2 — calm, professional, single-accent
+   Neutral surfaces · Inter only · one indigo accent · flat cards, fine borders.
+   Variable names (--lime etc.) are kept so every component inherits the new palette.
+   ===================================================================== */
+:root{
+  --canvas:#0b0b0e; --surface:#101014; --surface2:#16161b; --card:#121217; --card2:#1a1a20;
+  --line:#25252d; --line2:#34343e;
+  --text:#f4f4f6; --muted:#a0a0ab; --faint:#74747f;
+  --lime:#7b6cff; --lime-deep:#9a8eff; --orange:#a8a2ff; --violet:#8f84ff; --cyan:#8f84ff; --red:#ff6b6b;
+  --accent:#6f5cff; --accent-ink:#ffffff;
+  --pill:#f4f4f6; --pill-ink:#0b0b0e;
+  --r-lg:18px; --r-md:14px; --r-sm:10px;
+  --sh-1:0 1px 2px rgba(0,0,0,.35); --sh-2:0 10px 30px rgba(0,0,0,.45);
+  --font-ui:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-display:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+[data-theme="light"]{
+  --canvas:#f6f6f8; --surface:#ffffff; --surface2:#f0f0f4; --card:#ffffff; --card2:#f4f4f8;
+  --line:#e4e4ea; --line2:#d3d3dc; --text:#15151a; --muted:#5f5f6b; --faint:#8a8a96;
+  --lime:#5b49f0; --lime-deep:#4a39d8; --accent:#5b49f0;
+  --pill:#15151a; --pill-ink:#ffffff; --sh-1:0 1px 2px rgba(20,20,40,.06); --sh-2:0 10px 30px rgba(20,20,40,.10);
+}
+body{font-family:var(--font-ui); font-size:15px; letter-spacing:-.003em; -webkit-font-smoothing:antialiased}
+h1,h2,h3,.tb-title,.auth-hero h1{font-family:var(--font-display); letter-spacing:-.025em}
+
+/* remove decorative noise: aurora/WebGL, grain, glows, gradient edges */
+#bg,#bg *,canvas#gl,#gl{display:none!important}
+.landing{background:none!important}
+.auth-hero .logo-lg.logo-img::after,.dash-head::before{display:none!important}
+.auth-hero h1 .grad{background:none!important;color:var(--accent)!important;-webkit-text-fill-color:currentColor}
+.led,.dot.on,.tab.on::after{box-shadow:none!important}
+.card,.stat,.qcard,.lp-card,.voicecard,.eng{box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important}
+.card::before,.card::after,.stat::before,.qcard::before,.lp-card::before{display:none!important}
+.lp-card:hover,.voicecard:hover,.qcard:hover{transform:none!important; box-shadow:none!important; border-color:var(--line2)!important}
+.sect{letter-spacing:.08em; font-size:11px; font-weight:600; color:var(--faint)}
+.sect::after{background:var(--line)}
+
+/* sidebar: names only, quieter */
+#sidebar{background:var(--surface)!important; backdrop-filter:none!important; width:244px!important; padding:20px 12px!important}
+.brand b{font-size:15px; font-weight:650}
+.brand span{letter-spacing:.06em; font-size:10.5px}
+.navlabel{letter-spacing:.08em; font-size:11px; font-weight:600; padding:18px 12px 6px}
+.navitem{padding:9px 12px!important; border-radius:10px!important; gap:12px!important}
+.navitem .nv-txt small{display:none}
+.navitem .nv-txt b{font-weight:550; font-size:14px}
+.navitem svg{width:18px!important; height:18px!important; opacity:.9}
+.navitem.on{background:var(--surface2)!important; box-shadow:none!important; color:var(--text)}
+.navitem.on::before{display:none}
+.navitem.on svg{color:var(--accent); opacity:1}
+.side-foot .card{background:var(--surface2)!important}
+
+/* top bar & tab bar */
+#topbar{border-bottom:1px solid var(--line); background:color-mix(in srgb,var(--canvas) 92%,transparent); backdrop-filter:blur(12px)}
+#tabbar{background:var(--surface)!important; backdrop-filter:none!important}
+#tabbar button.on{background:none!important; color:var(--accent)!important}
+.tab.on::after{display:none}
+
+/* buttons: solid accent, no gradients, no glow */
+.btn{border-radius:10px!important; padding:11px 18px; font-weight:600; font-size:14px}
+.btn.sm{padding:8px 13px; border-radius:9px!important}
+.btn.primary,.btn.lime{background:var(--accent)!important; color:var(--accent-ink)!important; border-color:transparent!important; box-shadow:none!important; filter:none!important}
+.btn.primary:hover,.btn.lime:hover{background:color-mix(in srgb,var(--accent) 88%,#fff)!important; transform:none!important; box-shadow:none!important}
+.btn.ghost:hover{border-color:var(--accent); color:var(--text)}
+.iconbtn{background:var(--surface2); border-radius:10px!important; width:40px; height:40px}
+.iconbtn.solid{background:var(--accent)!important; color:#fff!important}
+.iconbtn.on{color:var(--accent)}
+.chip{border-radius:999px; background:var(--surface2)}
+.input,.ta,select.input{border-radius:10px!important; background:var(--surface2); border:1px solid var(--line)}
+.input:focus,.ta:focus{border-color:var(--accent)!important; box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)!important}
+.authtabs{border-radius:10px!important}
+.authtabs button{border-radius:8px!important}
+.authtabs button.on{background:var(--card2)!important; color:var(--text)!important; text-decoration:none!important; box-shadow:none!important}
+
+/* icon tiles: one neutral treatment instead of rainbow */
+.stat .s-ico,.qcard .qi,.lp-card .qi,.eng .e-ico,.vbadge,.qcard:nth-child(n) .qi{
+  background:color-mix(in srgb,var(--accent) 14%,transparent)!important; color:var(--accent)!important; border-radius:10px!important}
+.qcard:nth-child(4n+2) .qi,.qcard:nth-child(4n+3) .qi,.qcard:nth-child(4n+4) .qi{background:color-mix(in srgb,var(--accent) 14%,transparent)!important; color:var(--accent)!important}
+.qcard:hover .qa{color:var(--accent)!important}
+.lp-eyebrow svg,.lp-checks svg,.upcard .perk svg,.credits svg,.announce span svg{color:var(--accent)!important}
+.tag.lime{color:var(--lime-deep); border-color:color-mix(in srgb,var(--accent) 40%,transparent); background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.maillink,a.maillink{color:var(--lime-deep)}
+.progress i,input[type=range]::-webkit-slider-runnable-track{background:var(--accent)}
+.avatar{background:linear-gradient(140deg,#6f5cff,#9a8eff)!important; color:#fff!important}
+.bub.me{background:var(--accent)!important; color:#fff!important}
+.bub.ag{background:var(--surface2); border:1px solid var(--line)}
+.fab-support{background:var(--accent)!important; color:#fff!important; box-shadow:var(--sh-2)!important}
+.announce{background:var(--surface2)!important; border-bottom:1px solid var(--line); color:var(--text)}
+.dash-head{background:var(--card)!important; border:1px solid var(--line)!important}
+#splash .bars i,.auth-hero .bars i,.auth-hero .bars i:nth-child(n){background:var(--accent)!important}
+.badge{border-radius:6px; font-weight:600; letter-spacing:.02em}
+.led{background:var(--accent)!important}
+
+/* readable text sizes (old UI used 10–11px greys) */
+.tiny{font-size:12px}
+.muted,.faint{line-height:1.5}
+.view{animation-duration:.22s}
+@media (min-width:960px){#view{padding:8px 40px 64px!important; max-width:1120px!important}}
+@media (min-width:720px){
+  .sheet{left:50%!important; right:auto!important; bottom:auto!important; top:50%!important; width:min(560px,92vw)!important; max-height:86vh; transform:translate(-50%,-50%)!important; border-radius:18px!important; animation:fadeIn .2s both!important}
+}

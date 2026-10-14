@@ -19,7 +19,7 @@ const NAV = [
   ['Studio', [
     ['/studio/tts', 'text', 'Text to Speech', 'Type it — any voice, any language'],
     ['/studio/changer', 'swap', 'Voice Changer', 'Pitch, timbre & FX chains'],
-    ['/studio/clone', 'copy', 'Voice Match', 'Clone a voice from 10 seconds'],
+    ['/studio/clone', 'copy', 'Voice Clone', 'Clone a voice from 10 seconds'],
     ['/studio/design', 'wand', 'Voice Design', 'Design a voice from plain traits'],
     ['/studio/dub', 'globe', 'Dubbing Studio', 'Translate & re-voice video'],
     ['/studio/lip', 'film', 'Lip Sync Studio', 'Match speech to footage'],
@@ -60,7 +60,7 @@ export function createSheet() {
   sheet('Create', (box, close) => {
     const rows = [
       ['text', 'Text to Speech', 'Type it, hear it in any voice & language', '/studio/tts'],
-      ['copy', 'Voice Match', 'Match a neural voice to you from 10s of audio', '/studio/clone'],
+      ['copy', 'Voice Clone', 'Clone your voice from 10s of audio', '/studio/clone'],
       ['wand', 'Voice Design', 'Describe the voice in plain text.', '/studio/design'],
       ['swap', 'Voice Changer', 'Upload or record, convert the voice', '/studio/changer'],
       ['globe', 'Dubbing Studio', 'One script, every language', '/studio/dub'],

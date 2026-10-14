@@ -44,7 +44,7 @@ function welcome({ name, email, credits, url }) {
   const html = wrap(subject,
     h1('Welcome aboard, ' + name + ' 👋') +
     p(`Your Reachmark Audio account (<b>${email}</b>) is ready. We have added <b>${credits.toLocaleString()} ✦ credits</b> to your balance — they are live right now.`) +
-    p('Start with anything: neural text-to-speech and voice translation in any language, Voice Match (tune a neural voice to you from 10 seconds of audio), the voice changer, dubbing, lip sync — or build a <b>character agent</b> that talks and calls in its own voice.') +
+    p('Start with anything: neural text-to-speech and voice translation in any language, Voice Clone (clone a voice you own from 10 seconds of audio), the voice changer, dubbing, lip sync — or build a <b>character agent</b> that talks and calls in its own voice.') +
     p(btn(url + '/#/home', 'Open Reachmark Audio')) +
     p('<span style="color:#77796f;font-size:12.5px">Credits never expire while your account is active. Failed renders refund automatically. Questions? Reply-anytime support at ' + SUPPORT + '.</span>'),
     'Your ' + credits.toLocaleString() + ' credits are live.');

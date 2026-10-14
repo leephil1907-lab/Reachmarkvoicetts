@@ -9,12 +9,11 @@ Built for **worldwide use**: accounts, voice translation across languages, and s
 
 ## New in v1.3
 
-- **Cloud Voice Design (ElevenLabs)** — merged the Reachmark Voice API blueprint into the
-  platform: `POST /api/design/previews` turns a plain-text description into three real
-  generated audio previews (`ELEVENLABS_API_KEY` + `TTS_MODEL` env, 25 ✦ per run),
-  `POST /api/design/save` keeps the chosen preview as a permanent voice (50 ✦), and
-  `/api/tts` renders that voice through `eleven_multilingual_v2` (mp3). Without the key the
-  studio says so honestly (503) and the on-server trait parser + piper stay in charge.
+- **Self-hosted Voice Engine** (`engines/voice-engine/`) — real zero-shot voice cloning and
+  23-language neural TTS on **your own server** (Chatterbox Multilingual, MIT licence). No third-party
+  voice provider: set `VOICE_ENGINE_URL` + `VOICE_ENGINE_TOKEN`, and *Clone this voice* creates a
+  voice that speaks in Text to Speech, agents and calls. Without it the studio says so honestly and
+  falls back to basic Voice Match on piper. See `engines/voice-engine/README.md`.
 - **Claude-powered agents** — with `ANTHROPIC_API_KEY` set, character agents and voice calls
   answer in-character via the Anthropic messages API (speakable replies, first-turn-is-user
   normalisation, 20-turn history cap) and speak in their own designed or matched voice.
@@ -88,8 +87,8 @@ SUPPORT_EMAIL=support@reachmarkdigital.com \
 LLM_API_KEY=sk-...             # optional: OpenAI-compatible key for character agents
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
-ELEVENLABS_API_KEY=sk_...      # optional: cloud Voice Design + eleven_multilingual_v2 TTS
-TTS_MODEL=eleven_multilingual_v2
+VOICE_ENGINE_URL=http://voice-engine:8100   # self-hosted cloning engine (engines/voice-engine)
+VOICE_ENGINE_TOKEN=<long-random-secret>
 ANTHROPIC_API_KEY=sk-ant-...   # optional: Claude in-character agent replies
 CLAUDE_MODEL=claude-sonnet-5-5
 npm run start:admin            # admin only · npm run start:web → public only
@@ -154,8 +153,8 @@ LLM_MODEL`. See `.env.example` for the annotated list.
 
 **The secrets are created EMPTY on purpose** (this repo is public — secrets never go
 into git): `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SMTP_PASS`, `LLM_API_KEY`,
-`ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, `ADMIN_IP_ALLOWLIST`. Non-secret cloud defaults
-(`CLAUDE_MODEL`, `TTS_MODEL`) ship pre-filled. Paste them once in the Railway dashboard (Variables tab) or via CLI
+`VOICE_ENGINE_TOKEN`, `ANTHROPIC_API_KEY`, `ADMIN_IP_ALLOWLIST`. Non-secret cloud defaults
+(`CLAUDE_MODEL`) ship pre-filled. Paste them once in the Railway dashboard (Variables tab) or via CLI
 (`railway variables set SMTP_PASS=… ADMIN_EMAIL=… ADMIN_PASSWORD=…`); every restart picks
 them up. Without them the app still runs: no admin seeded, mail falls back to
 `data/outbox.log`, agents use the local persona brain, Voice Design uses the on-server

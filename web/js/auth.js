@@ -66,7 +66,7 @@ routes['/auth'] = {
     (async () => {
       try {
         const hh = await api('/api/health');
-        const live = [hh.piper?.ready, hh.elevenlabs, hh.llm].filter(Boolean).length;
+        const live = [hh.piper?.ready, hh.voiceEngine, hh.llm].filter(Boolean).length;
         engChip.replaceChildren(h('span', { class: 'led' + (live ? '' : ' off') }), live + ' live engine' + (live === 1 ? '' : 's') + ' · ' + (hh.piper?.voices || 0) + ' neural voices');
       } catch { engChip.replaceChildren(h('span', { class: 'led off' }), 'offline shell'); }
     })();
@@ -151,7 +151,7 @@ export function welcomeSheet() {
       h('div', { class: 'card', style: { background: 'linear-gradient(140deg, color-mix(in srgb, var(--lime) 16%, var(--card)), var(--card))', display: 'flex', gap: '12px', alignItems: 'center' } },
         icon('spark'), h('div', {}, h('b', {}, '10,000 ✦ credits added'), h('small', { class: 'muted' }, 'Your signup gift — spend them across every studio.'))),
       h('div', { class: 'sect' }, 'Start in 3 steps'),
-      h('div', { class: 'row tap', onclick: () => { close(); navigate('/studio/clone'); } }, h('div', { class: 'r-ico' }, icon('copy')), h('div', {}, h('b', {}, '1 · Match your voice'), h('small', {}, 'Record 10 seconds — the nearest neural voice is tuned to you'))),
+      h('div', { class: 'row tap', onclick: () => { close(); navigate('/studio/clone'); } }, h('div', { class: 'r-ico' }, icon('copy')), h('div', {}, h('b', {}, '1 · Clone your voice'), h('small', {}, 'Record 10–30 seconds and use it anywhere'))),
       h('div', { class: 'row tap', onclick: () => { close(); navigate('/studio/tts'); } }, h('div', { class: 'r-ico' }, icon('text')), h('div', {}, h('b', {}, '2 · Make it speak'), h('small', {}, 'Any text, any language, your character intact'))),
       h('div', { class: 'row tap', onclick: () => { close(); navigate('/agent/guide'); } }, h('div', { class: 'r-ico' }, icon('bot')), h('div', {}, h('b', {}, '3 · Meet your Guide'), h('small', {}, 'The platform AI assistant answers anything, anytime'))),
       h('p', { class: 'tiny faint', style: { marginTop: '12px' } }, 'Tip: press Ctrl / Cmd + K anywhere for the command palette.'));

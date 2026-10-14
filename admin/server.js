@@ -22,7 +22,7 @@ const totp = require('../server/totp');
 const tts = require('../server/tts');
 const dsp = require('../server/dsp');
 const engines = require('../server/engines');
-const el = require('../server/elevenlabs');
+const ve = require('../server/voiceengine');
 const llm = require('../server/llm');
 const brainS = require('../server/brain');
 const mail = require('../server/mail');
@@ -131,7 +131,7 @@ async function stats() {
     minutes: +users.reduce((a, u) => a + (u.minutes || 0), 0).toFixed(1),
     piper: tts.status(), engines: eng, disk,
     llm: { configured: llm.configured(), model: llm.model(), provider: llm.provider() },
-    elevenlabs: { configured: el.configured(), model: el.model() },
+    voiceEngine: { configured: ve.configured() },
     supportUnread: store.support.unreadAdmin(),
     threadsOpen: store.support.threads(null).filter(t => t.status !== 'closed').length,
   };

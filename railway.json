@@ -33,9 +33,9 @@
     "LLM_API_KEY": "",
     "VAPID_PUBLIC_KEY": "",
     "VAPID_PRIVATE_KEY": "",
-    "ELEVENLABS_API_KEY": "",
+    "VOICE_ENGINE_URL": "",
+    "VOICE_ENGINE_TOKEN": "",
     "ANTHROPIC_API_KEY": "",
-    "CLAUDE_MODEL": "claude-sonnet-5-5",
-    "TTS_MODEL": "eleven_multilingual_v2"
+    "CLAUDE_MODEL": "claude-sonnet-5-5"
   }
 }

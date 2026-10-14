@@ -89,7 +89,7 @@ routes['/home'] = {
       h('div', { class: 'stat' }, h('span', { class: 's-ico cyan' }, icon('clock')), h('b', {}, (db.user?.minutes || 0).toFixed(1)), h('small', {}, 'studio minutes')));
     const quick = h('div', { class: 'qgrid', 'data-stag': '' },
       [['/studio/tts', 'text', 'Text to Speech', 'Type it — hear it in any voice, any language'],
-       ['/studio/clone', 'copy', 'Voice Match', 'Clone a voice from 10 seconds of audio'],
+       ['/studio/clone', 'copy', 'Voice Clone', 'Clone a voice from 10 seconds of audio'],
        ['/studio/changer', 'swap', 'Voice Changer', 'Pitch, timbre and FX chains on any recording'],
        ['/studio/dub', 'globe', 'Dubbing Studio', 'Translate and re-voice video with downloads'],
        ['/studio/lip', 'film', 'Lip Sync', 'Match speech to footage, export WebM'],
@@ -123,7 +123,7 @@ routes['/home'] = {
       }
     })();
     const tabs = ['tts', 'vc', 'sep', 'dub', 'lip', 'clone'];
-    const labels = { tts: 'Text to Speech', vc: 'Voice Changer', sep: 'Quick Vocal Remove', dub: 'Dubbing', lip: 'Lip Sync', clone: 'Voice Matches' };
+    const labels = { tts: 'Text to Speech', vc: 'Voice Changer', sep: 'Quick Vocal Remove', dub: 'Dubbing', lip: 'Lip Sync', clone: 'Voice Clones' };
     const pills = h('div', { class: 'pills' });
     const list = h('div', { class: 'stack', style: { marginTop: '10px' } }, skelRows(3));
     let cur = 'tts';
@@ -292,8 +292,8 @@ routes['/studio/changer'] = {
 
 /* ================= INSTANT VOICE CLONE ================= */
 routes['/studio/clone'] = {
-  title: 'Voice Match', tab: 'home',
-  top: () => ({ back: true, title: 'Voice Match', sub: 'Pitch & pace analysis → nearest neural voice, tuned to you' }),
+  title: 'Voice Clone', tab: 'home',
+  top: () => ({ back: true, title: 'Voice Clone', sub: 'Your voice, in 23 languages' }),
   view: async ({ node }) => {
     const ring = h('div', { class: 'recring' }, h('button', { class: 'mic', html: icons.mic }));
     const timeLab = h('div', { class: 'rectime' }, 'Tap the mic · 10 seconds is enough');
@@ -328,28 +328,37 @@ routes['/studio/clone'] = {
     });
     const flow = h('div', { class: 'flow' },
       h('div', { class: 'node' }, h('b', {}, 'Sample'), '10s audio'), h('div', { class: 'arr' }, icon('chevron')),
-      h('div', { class: 'node' }, h('b', {}, 'Analyse'), 'F0 + pace'), h('div', { class: 'arr' }, icon('chevron')),
-      h('div', { class: 'node' }, h('b', {}, 'Profile'), 'pitch · speed · colour'), h('div', { class: 'arr' }, icon('chevron')),
-      h('div', { class: 'node' }, h('b', {}, 'Match'), 'nearest neural voice'), h('div', { class: 'arr' }, icon('chevron')),
-      h('div', { class: 'node' }, h('b', {}, 'Ready'), 'speaks 5 languages'));
+      h('div', { class: 'node' }, h('b', {}, 'Check'), 'quality · length'), h('div', { class: 'arr' }, icon('chevron')),
+      h('div', { class: 'node' }, h('b', {}, 'Profile'), 'timbre · pace'), h('div', { class: 'arr' }, icon('chevron')),
+      h('div', { class: 'node' }, h('b', {}, 'Clone'), 'speaker embedding'), h('div', { class: 'arr' }, icon('chevron')),
+      h('div', { class: 'node' }, h('b', {}, 'Ready'), 'speaks 23 languages'));
+    const engineNote = h('div', { class: 'card flat muted tiny' }, 'Checking voice engine…');
+    fetch('/api/health').then(r => r.json()).then(hh => {
+      engineNote.textContent = hh.voiceEngine
+        ? 'Real voice cloning is on. Record or upload 10–30 seconds of clear speech (one speaker, little background noise). Your cloned voice speaks 23 languages and can be used in Text to Speech, agents and calls.'
+        : 'The voice-cloning engine is not connected on this server yet, so this runs a basic voice match: it measures the pitch and pace of your sample and tunes the closest built-in voice to you. It will not sound exactly like you until the cloning engine is connected.';
+    }).catch(() => { engineNote.textContent = 'Could not check the voice engine status — you can still try a match.'; });
+    const consentBox = h('input', { type: 'checkbox', id: 'consent' });
+    const consentRow = h('label', { class: 'card flat tiny muted', style: { display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer', marginBottom: '12px' } }, consentBox, h('span', {}, 'I confirm this is my own voice, or I have the speaker’s permission to clone it, and I will not use it to impersonate or deceive anyone.'));
     const cloneBtn = h('button', { class: 'btn lime block', disabled: true, onclick: async () => {
-      cloneBtn.replaceChildren(h('i', { class: 'spin' }), 'Matching…'); cloneBtn.disabled = true;
+      if (!consentBox.checked) return toast('Please tick the consent box first', 'close');
+      cloneBtn.replaceChildren(h('i', { class: 'spin' }), 'Cloning your voice…'); cloneBtn.disabled = true;
       try {
-        const { voice } = await api('/api/clone', { method: 'POST', body: { name: nameIn.value || 'Matched voice', note: noteIn.value, sample: sampleData } });
+        const { voice } = await api('/api/clone', { method: 'POST', body: { name: nameIn.value || 'Matched voice', note: noteIn.value, sample: sampleData, consent: true } });
         await refreshVoices();
         state.defaultVoiceId = voice.id; save();
         await pushHistory({ kind: 'clone', title: voice.name, url: voice.sample, meta: voice.desc });
-        modal('Voice matched', (box, close) => {
-          box.append(h('p', { class: 'muted' }, voice.name + ' is live. ' + voice.desc + '. It is now your default voice — and it can speak English, French, Spanish and German with your character intact.'),
+        modal('Voice ready', (box, close) => {
+          box.append(h('p', { class: 'muted' }, voice.name + ' is live. ' + voice.desc + '. It is now your default voice.'),
             h('div', { class: 'stack', style: { marginTop: '12px' } },
               h('button', { class: 'btn primary block', onclick: () => { close(); navigate('/studio/tts'); } }, 'Try it in Text to Speech'),
               h('button', { class: 'btn block', onclick: () => { close(); navigate('/agents'); } }, 'Build an agent with it')));
         });
       } catch (e) { toast(e.message, 'close'); }
-      cloneBtn.replaceChildren(icon('copy'), 'Match this voice · 150 ✦'); cloneBtn.disabled = !sampleData;
-    } }, icon('copy'), 'Match this voice · 150 ✦');
+      cloneBtn.replaceChildren(icon('copy'), 'Clone this voice · 150 ✦'); cloneBtn.disabled = !sampleData;
+    } }, icon('copy'), 'Clone this voice · 150 ✦');
     node.append(h('div', { 'data-stag': '' },
-      h('div', { class: 'card flat muted tiny' }, 'Honest labelling: Voice Match measures the pitch and pace of your sample and tunes the closest neural voice to you — a fast, usable match. True speaker-embedding cloning (XTTS / OpenVoice) plugs into this same endpoint automatically when a GPU engine is attached in Engine Hub.'),
+      engineNote,
       h('div', { class: 'card flat center' }, ring, levelBar, timeLab,
         h('div', { style: { display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' } },
           h('button', { class: 'btn sm', onclick: () => pickFile('audio/*', async f => {
@@ -363,7 +372,7 @@ routes['/studio/clone'] = {
       srcBox,
       h('label', { class: 'fld' }, 'Name it'), nameIn, noteIn,
       h('label', { class: 'fld' }, 'Pipeline'), flow,
-      cloneBtn));
+      consentRow, cloneBtn));
   },
 };
 
@@ -419,7 +428,7 @@ routes['/studio/design'] = {
       } catch (e) { toast(e.message, 'close'); }
     } }, icon('star'), 'Save to My voices');
     const pills = h('div', { class: 'pills', style: { marginTop: '10px' } }, sugg.map(s => h('button', { class: 'chip', onclick: () => { ta.value = s; parse(); } }, s)));
-    const cloudOn = !!(db.engines && db.engines.elevenlabs);
+    const cloudOn = !!(db.engines && db.engines.cloudDesign);
     const cloudOut = h('div', { class: 'stack', style: { marginTop: '14px' } });
     const b64ToUrl = (b64) => { const bin = atob(b64); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' })); };
     const genBtn = h('button', { class: 'btn primary', onclick: async () => {
@@ -455,7 +464,7 @@ routes['/studio/design'] = {
     node.append(h('div', { 'data-stag': '' },
       h('label', { class: 'fld' }, 'Describe the voice'), ta, pills,
       cloudOn ? h('div', { style: { marginTop: '16px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' } },
-        genBtn, h('span', { class: 'tiny faint' }, '25 credits per run · 50 to keep · ElevenLabs multilingual engine')) : null,
+        genBtn, h('span', { class: 'tiny faint' }, '25 credits per run · 50 to keep')) : null,
       cloudOn ? cloudOut : null,
       traitLabel, parsed,
       h('div', { class: 'grid2', style: { marginTop: '18px' } }, prev, h('span')), out, saveBtn));

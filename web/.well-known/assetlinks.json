@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.railway.up.reachmarkvoicetts_production.twa",
+        "sha256_cert_fingerprints": ["72:C1:58:E0:38:EC:2A:D0:82:72:4D:52:8E:45:A9:16:FF:25:6D:44:94:3B:EB:E6:D9:77:70:8B:9C:27:37:BA"]
+      }
+    }]

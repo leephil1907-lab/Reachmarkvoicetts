@@ -292,7 +292,7 @@ routes['/agent/:id'] = {
       catch { browserSpeak(text); }
     };
     const inp = h('input', { class: 'input', placeholder: 'Message ' + a.name + '…', style: { borderRadius: '999px' } });
-    let hist = [];
+    let hist = [], warned = false;
     const send = async () => {
       const t = inp.value.trim(); if (!t) return;
       inp.value = ''; addBub('me', t);
@@ -301,8 +301,10 @@ routes['/agent/:id'] = {
       try {
         const r = await api('/api/agent/chat', { method: 'POST', body: { agentId: a.id, message: t, history: hist } });
         hist = hist.concat([{ role: 'user', content: t }, { role: 'assistant', content: r.content }]).slice(-12);
-        typing.remove(); await say(r.content);
-      } catch (e) { typing.remove(); addBub('ag', 'Connection hiccup — ' + e.message); }
+        typing.remove();
+        if (r.warn && !warned) { warned = true; log.append(h('div', { class: 'card flat tiny muted', style: { textAlign: 'center' } }, r.warn)); }
+        await say(r.content);
+      } catch (e) { typing.remove(); addBub('ag', 'Could not reach the agent: ' + e.message); }
     };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
     setTimeout(() => say(a.greeting), 500);
@@ -357,6 +359,7 @@ routes['/call/:id'] = {
       try {
         const r = await api('/api/agent/chat', { method: 'POST', body: { agentId: a.id, message: text, history: callHist } });
         callHist = callHist.concat([{ role: 'user', content: text }, { role: 'assistant', content: r.content }]).slice(-12);
+        if (r.warn && !agentTurn.warned) { agentTurn.warned = true; log.append(h('div', { class: 'card flat tiny muted', style: { textAlign: 'center' } }, r.warn)); }
         await say(r.content);
       } catch (e) { await say('Sorry — the line crackled: ' + e.message); }
     };
@@ -383,9 +386,9 @@ routes['/support'] = {
   top: () => ({ back: true, title: 'Support Center', sub: 'Live help, worldwide' }),
   view: async ({ node }) => {
     const faq = [
-      ['How does Voice Match work?', 'Create → Voice Match. Record 10 seconds in a quiet room (or upload a clean sample) and the analyser measures your pitch and pace, then tunes the nearest neural voice to you. It is a fast voice match — true speaker-embedding cloning plugs into the same endpoint when a GPU engine is attached.'],
+      ['How does Voice Clone work?', 'Create → Voice Clone. Record 10–30 seconds in a quiet room (or upload a clean sample), confirm the voice is yours or that you have permission, and Reachmark builds a voice that speaks like it in 23 languages. If the cloning engine is temporarily unavailable on this server, a basic pitch-and-pace match is used instead and the app tells you so.'],
       ['How does voice translation work?', 'Your voice character (pitch, pace, colour) is stored as a profile. In Text to Speech, pick an output language — English, French, Spanish or German — and the same character performs in that language.'],
-      ['What do credits cover?', 'New accounts get 10,000 credits. TTS ≈ 1 per 40 characters, voice change 20, Voice Match 150, Quick Vocal Remove 30, dubbing 15 per take. Failed renders refund automatically. Your balance is in the top bar.'],
+      ['What do credits cover?', 'New accounts get 10,000 credits. TTS ≈ 1 per 40 characters, voice change 20, Voice Clone 150, Quick Vocal Remove 30, dubbing 15 per take. Failed renders refund automatically. Your balance is in the top bar.'],
       ['What is Quick Vocal Remove?', 'A center-channel reduction for stereo mixes: it extracts a centered-vocal bus and a karaoke bus. Best on mixes with centered lead vocals; a Demucs-class engine plugs into the same endpoint when attached.'],
       ['Can I use renders commercially?', 'Free plan renders are for evaluation. The Plus plan includes commercial use, 200 minutes and 10 voice slots — request it from Account: our team emails a secure payment link and a staff member switches Plus on after payment is confirmed. No cards are ever stored or auto-charged.'],
       ['My microphone is blocked.', 'Browsers require permission per site. Allow microphone in site settings, then retry — or upload an audio file instead (20 MB max); every studio accepts uploads.'],
@@ -546,8 +549,8 @@ routes['/terms'] = {
     'These terms govern your use of Reachmark Audio (the "Service"), a web and desktop application operated by Reachmark Digital ("we", "us"). By creating an account or using the Service you agree to these terms. Please read them — they are written in plain language on purpose.',
     [
       ['1. The Service', [
-        'Reachmark Audio provides neural text-to-speech, voice translation, Voice Match (pitch/pace matching of a neural voice to your sample), a voice changer, dubbing, lip sync tools and persona-driven character agents that chat and call using synthesized voice.',
-        'Features labelled "Voice Match" and "Quick Vocal Remove" are honest about their current engines: Voice Match tunes the nearest neural voice to your sample (true speaker-embedding cloning activates automatically if a GPU engine is attached), and Quick Vocal Remove is centre-channel reduction for stereo mixes. We do not charge for capabilities we cannot deliver.',
+        'Reachmark Audio provides neural text-to-speech, voice translation, Voice Clone (zero-shot cloning of a voice you own or have permission to use), a voice changer, dubbing, lip sync tools and persona-driven character agents that chat and call using synthesized voice.',
+        'You may only clone a voice that is your own or that you have explicit permission to clone, and you may not use cloned voices to impersonate, deceive or harm anyone; we may suspend accounts that do. If the cloning engine is unavailable we fall back to a basic pitch-and-pace match and say so, and Quick Vocal Remove is centre-channel reduction for stereo mixes. We do not charge for capabilities we cannot deliver.',
       ]],
       ['2. Accounts & credits', [
         'You must provide a valid email address and keep your password confidential. New accounts receive 10,000 credits; credits are a licence to consume compute, not money, and are non-transferable and non-refundable to cash.',

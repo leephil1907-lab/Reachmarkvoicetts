@@ -39,7 +39,7 @@ async function claudeChat({ agent, history, message }) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT),
   });
-  if (!res.ok) throw new Error('Claude ' + res.status);
+  if (!res.ok) { let d = ''; try { d = (await res.text()).slice(0, 200); } catch {} throw new Error('Claude API ' + res.status + (d ? ' — ' + d : '')); }
   const j = await res.json();
   const content = (Array.isArray(j.content) ? j.content : []).filter(b => b && b.type === 'text').map(b => b.text).join('').trim();
   if (!content) throw new Error('empty agent reply');
@@ -49,7 +49,7 @@ async function claudeChat({ agent, history, message }) {
 async function chat({ agent, history, message }) {
   if (AKEY()) {
     try { return await claudeChat({ agent, history, message }); }
-    catch (e) { if (!KEY()) throw e; /* fall through to OpenAI-compatible provider */ }
+    catch (e) { console.error('[llm] anthropic failed:', e.message); if (!KEY()) throw e; /* fall through to OpenAI-compatible provider */ }
   }
   if (!KEY()) return null;
   const body = {
@@ -71,7 +71,7 @@ async function chat({ agent, history, message }) {
       body: JSON.stringify(body),
       signal: ctl.signal,
     });
-    if (!res.ok) throw new Error('LLM ' + res.status);
+    if (!res.ok) { let d = ''; try { d = (await res.text()).slice(0, 200); } catch {} throw new Error('LLM API ' + res.status + (d ? ' — ' + d : '')); }
     const j = await res.json();
     const content = j?.choices?.[0]?.message?.content?.trim();
     if (!content) throw new Error('empty completion');
