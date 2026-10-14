@@ -21,9 +21,34 @@ export function h(tag, attrs = {}, ...kids) {
 }
 
 /* ---------------- icon set ---------------- */
-const I = (p, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ${extra}>${p}</svg>`;
+const I = (p, extra = '') => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" ${extra}>${p}</svg>`;
 export const icons = {
   mic: I('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8.5 21h7"/>'),
+
+  // Reachmark semantic icon set — consistent inline SVGs, no emoji or remote icon dependency.
+  audioLines: I('<path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/>'),
+  audioWaveform: I('<path d="M2 10v4M6 6v12M10 3v18M14 8v8M18 5v14M22 10v4"/>'),
+  sliders: I('<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/>'),
+  languages: I('<path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2v3M14 21l5-10 5 10M16 17h6"/>'),
+  scanFace: I('<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="11" r="3"/><path d="M7.5 17a5 5 0 0 1 9 0"/>'),
+  wandSparkles: I('<path d="m15 4 1.5 3.5L20 9l-3.5 1.5L15 14l-1.5-3.5L10 9l3.5-1.5Z"/><path d="m5 19 8-8M18 15l.8 1.8 1.7.7-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.7ZM5 3l.8 1.8 1.7.7-1.7.8L5 8l-.8-1.7L2.5 5.5l1.7-.7Z"/>'),
+  audioFile: I('<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M13 2v7h7M8 14v4M11 12v8M14 15v3M17 13v6"/>'),
+  video: I('<rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3Z"/>'),
+  fingerprint: I('<path d="M12 11a2 2 0 0 0-2 2c0 4-1 6-2 8M14 13c0 3-.3 5.5-1.2 8M6.5 18.5C7.5 16 8 14 8 12a4 4 0 0 1 8 0v1M5 15a7 7 0 0 1-.5-3 7.5 7.5 0 0 1 15 0M3 10a9 9 0 0 1 18 0M17 16c-.1 1.8-.4 3.4-1 5"/>'),
+  headphones: I('<path d="M3 14v-3a9 9 0 0 1 18 0v3"/><rect x="3" y="13" width="4" height="7" rx="2"/><rect x="17" y="13" width="4" height="7" rx="2"/>'),
+  shieldCheck: I('<path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/>'),
+  userRound: I('<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>'),
+  badgeCheck: I('<path d="m12 3 2.2 1.4 2.6-.1 1.3 2.3 2.3 1.3-.1 2.6L22 13l-1.4 2.2.1 2.6-2.3 1.3-1.3 2.3-2.6-.1L12 23l-2.2-1.4-2.6.1-1.3-2.3-2.3-1.3.1-2.6L2 13l1.4-2.2-.1-2.6 2.3-1.3 1.3-2.3 2.6.1Z"/><path d="m9 12 2 2 4-4"/>'),
+  chart: I('<path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-7"/>'),
+  database: I('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'),
+  messageCircle: I('<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8Z"/>'),
+  lock: I('<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3M12 14v3"/>'),
+  circleHelp: I('<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>'),
+  bolt: I('<path d="m13 2-3 8h7l-6 12 2-9H6Z"/>'),
+  circleUser: I('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="9" r="3"/><path d="M6.5 19a6 6 0 0 1 11 0"/>'),
+  panelsTopLeft: I('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M9 9h12"/>'),
+  fileAudio: I('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 15v3M11 12v6M14 14v4M17 13v5"/>'),
+
   micStudio: I('<rect x="8" y="2.5" width="8" height="12.5" rx="4"/><path d="M4.5 11a7.5 7.5 0 0 0 15 0M12 18.5V22M8 22h8M8 6.5h8M8 9.5h8"/>'),
   upload: I('<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>'),
   home: I('<path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1Z"/>'),
@@ -78,7 +103,7 @@ export const icons = {
   clock: I('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>'),
   grid: I('<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>'),
 };
-export const icon = (name, cls = '') => h('span', { class: 'ico' + (cls ? ' ' + cls : ''), html: icons[name] || icons.spark });
+export const icon = (name, cls = '') => h('span', { class: 'ico' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true', html: icons[name] || icons.spark });
 
 /* ---------------- local prefs ---------------- */
 const KEY = 'reachmark-audio-prefs-v2';
