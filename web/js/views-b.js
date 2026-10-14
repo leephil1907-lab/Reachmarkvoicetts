@@ -245,7 +245,7 @@ routes['/agents'] = {
       const avatarFile = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: { display: 'none' }, onchange: async e => {
         const file = e.target.files?.[0]; if (!file) return;
         if (file.size > 8 * 1024 * 1024) { toast('Choose an image under 8 MB', 'close'); e.target.value = ''; return; }
-        if (!/^image\\/(png|jpeg|webp)$/.test(file.type)) { toast('Use a PNG, JPG or WebP image', 'close'); e.target.value = ''; return; }
+        if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { toast('Use a PNG, JPG or WebP image', 'close'); e.target.value = ''; return; }
         try {
           const source = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
           const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = source; });
