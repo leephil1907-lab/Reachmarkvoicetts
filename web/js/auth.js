@@ -12,7 +12,9 @@ routes['/auth'] = {
     const emailF = h('input', { class: 'input', placeholder: 'Email address', type: 'email', autocomplete: 'email' });
     const passF = h('input', { class: 'input', placeholder: 'Password (8+ characters)', type: 'password', autocomplete: mode === 'login' ? 'current-password' : 'new-password' });
     const submit = h('button', { class: 'btn primary block', type: 'submit' }, icon('spark'), 'Log in');
-    const head = h('h3', { class: 'auth-head' }, 'Log in to your account');
+    const head = h('h3', { class: 'auth-head' }, 'Welcome back');
+    const pitchTitle = h('h1', { class: 'gate-title' }, 'Give your ideas a voice.');
+    const pitchText = h('p', { class: 'gate-copy' }, 'Create expressive voiceovers, shape new voices, and bring characters to life — all in one creative studio.');
     const tabs = h('div', { class: 'authtabs' },
       h('button', { class: 'on', onclick: () => setMode('login') }, 'Log in'),
       h('button', { onclick: () => setMode('signup') }, 'Sign up'));
@@ -22,7 +24,11 @@ routes['/auth'] = {
       nameF.style.display = m === 'signup' ? '' : 'none';
       submit.replaceChildren(icon(m === 'signup' ? 'plus' : 'spark'), m === 'signup' ? 'Create account · get 10,000 ✦' : 'Log in');
       passF.autocomplete = m === 'login' ? 'current-password' : 'new-password';
-      head.textContent = m === 'signup' ? 'Create your account' : 'Log in to your account';
+      head.textContent = m === 'signup' ? 'Start creating for free' : 'Welcome back';
+      pitchTitle.textContent = m === 'signup' ? 'Your next great voice starts here.' : 'Good to have you back.';
+      pitchText.textContent = m === 'signup'
+        ? 'Make stories sound cinematic, turn scripts into voiceovers, and explore a whole studio of AI-powered audio tools.'
+        : 'Pick up where you left off. Your voices, projects, and creative tools are ready when you are.';
       err.hidden = true;
     }
     const form = h('form', { class: 'stack', onsubmit: async e => {
@@ -76,19 +82,35 @@ routes['/auth'] = {
         h('span', { class: 'logo logo-img brand-mark', html: icons.brandMark, 'aria-label': 'Reachmark Audio' }),
         h('div', {}, h('b', {}, 'Reachmark Audio'), h('small', {}, 'by Reachmark Digital')),
         engChip),
-      h('div', { class: 'auth-card card' },
-        head, tabs, form, forgot,
-        h('div', { class: 'center tiny faint', style: { marginTop: '14px' } },
-          'Need help? ', h('a', { href: 'mailto:support@reachmarkdigital.com', class: 'maillink' }, 'support@reachmarkdigital.com'), h('br'),
-          h('a', { href: 'mailto:reachmarkofficial@gmail.com', class: 'maillink' }, 'reachmarkofficial@gmail.com')),
-        h('div', { class: 'center tiny faint', style: { marginTop: '10px' } },
-          'By continuing you agree to our ', h('a', { class: 'maillink', onclick: () => navigate('/terms') }, 'Terms'), ' & ', h('a', { class: 'maillink', onclick: () => navigate('/privacy') }, 'Privacy Policy'), '.')),
+      h('div', { class: 'gate-layout' },
+        h('section', { class: 'gate-showcase', 'aria-label': 'Reachmark Audio creative studio' },
+          h('div', { class: 'gate-eyebrow' }, h('i', {}), 'THE AI VOICE PLAYGROUND'),
+          pitchTitle,
+          pitchText,
+          h('div', { class: 'voice-orbit', 'aria-hidden': 'true' },
+            h('div', { class: 'orbit-ring ring-a' }), h('div', { class: 'orbit-ring ring-b' }),
+            h('div', { class: 'voice-core' }, h('span', { class: 'logo logo-img brand-mark', html: icons.brandMark })),
+            h('span', { class: 'orbit-dot dot-a' }), h('span', { class: 'orbit-dot dot-b' }), h('span', { class: 'orbit-dot dot-c' }),
+            h('div', { class: 'wave-bars' }, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20].map((n) => h('i', { style: { '--bar': n } })))),
+          h('div', { class: 'gate-feature-row' },
+            h('span', {}, icon('audioLines'), 'Voiceovers'), h('span', {}, icon('fingerprint'), 'Voice Match'), h('span', {}, icon('languages'), 'Dubbing')),
+          h('div', { class: 'gate-quote' }, h('span', {}, '“'), h('p', {}, 'From a single sentence to a whole new soundscape.'), h('small', {}, 'MAKE SOMETHING PEOPLE CAN HEAR.'))),
+        h('div', { class: 'auth-card card' },
+          h('div', { class: 'auth-card-intro' }, h('span', { class: 'auth-mini-mark', html: icons.brandMark }), h('span', { class: 'tiny faint' }, 'YOUR CREATIVE SPACE')),
+          head,
+          h('p', { class: 'auth-subcopy' }, 'Sign in to your studio, or create an account to get started.'),
+          tabs, form, forgot,
+          h('div', { class: 'auth-trust' }, icon('shieldCheck'), 'Your account and projects stay yours.'),
+          h('div', { class: 'center tiny faint', style: { marginTop: '12px' } },
+            'Need help? ', h('a', { href: 'mailto:support@reachmarkdigital.com', class: 'maillink' }, 'Contact support')),
+          h('div', { class: 'center tiny faint', style: { marginTop: '10px' } },
+            'By continuing you agree to our ', h('a', { class: 'maillink', onclick: () => navigate('/terms') }, 'Terms'), ' & ', h('a', { class: 'maillink', onclick: () => navigate('/privacy') }, 'Privacy Policy'), '.'))),
       h('footer', { class: 'gate-foot' },
         h('div', {},
           h('button', { onclick: () => navigate('/terms') }, 'Terms of Service'), h('span', {}, '·'),
           h('button', { onclick: () => navigate('/privacy') }, 'Privacy Policy'), h('span', {}, '·'),
           h('a', { class: 'maillink', href: 'mailto:support@reachmarkdigital.com' }, 'Support')),
-        h('small', {}, 'Reachmark Audio 1.3 · a product of Reachmark Digital · worldwide voice infrastructure'))));
+        h('small', {}, 'Reachmark Audio · a product of Reachmark Digital'))));
     mountAurora(aurora, { amplitude: 0.55 });
   },
 };
