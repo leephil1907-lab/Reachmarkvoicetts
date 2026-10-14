@@ -703,16 +703,54 @@ routes['/account'] = {
       }; }
     };
     refreshPush();
+    const initials = (u?.name || u?.email || '?').trim().split(/\\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() || '').join('');
+    const profileAvatar = h('span', { class: 'avatar profile-avatar tone-' + (state.profileTone || 'lime'), 'aria-label': 'Profile avatar' }, initials || '?');
+    const editProfile = () => modal('Edit your profile', (box, close) => {
+      const nameInput = h('input', { class: 'input', value: u?.name || '', maxlength: '48', autocomplete: 'name', placeholder: 'Your display name' });
+      const note = h('p', { class: 'tiny muted', style: { margin: '10px 0 0' } }, 'Your email address stays private and cannot be changed here.');
+      box.append(h('label', { class: 'fld' }, 'Display name'), nameInput, note,
+        h('button', { class: 'btn primary block', style: { marginTop: '16px' }, onclick: async e => {
+          e.currentTarget.disabled = true;
+          try {
+            await api('/api/account/profile', { method: 'POST', body: { name: nameInput.value.trim() } });
+            await syncUser();
+            close();
+            toast('Profile updated', 'check');
+            navigate('/account');
+          } catch (err) { toast(err.message, 'close'); e.currentTarget.disabled = false; }
+        } }, icon('check'), 'Save changes'));
+      setTimeout(() => nameInput.focus(), 60);
+    });
+    const avatarStyle = () => modal('Choose your avatar colour', (box, close) => {
+      const choices = [['lime', 'Lime'], ['cyan', 'Sky'], ['vio', 'Violet'], ['warm', 'Amber']];
+      const row = h('div', { class: 'avatar-choices' });
+      choices.forEach(([key, label]) => row.append(h('button', { class: 'avatar-choice ' + key + ((state.profileTone || 'lime') === key ? ' on' : ''), onclick: () => {
+        state.profileTone = key; save();
+        profileAvatar.className = 'avatar profile-avatar tone-' + key;
+        close(); toast('Avatar colour updated', 'check');
+      } }, h('span', { class: 'tone-dot ' + key }), label)));
+      box.append(h('p', { class: 'muted tiny' }, 'This appearance preference is saved on this device.'), row);
+    });
+    const profileHero = h('section', { class: 'profile-hero' },
+      h('div', { class: 'profile-hero-top' },
+        h('div', { class: 'profile-avatar-wrap' }, profileAvatar,
+          h('button', { class: 'avatar-edit', 'aria-label': 'Change avatar colour', title: 'Change avatar colour', onclick: avatarStyle }, icon('edit'))),
+        h('div', { class: 'profile-identity' },
+          h('span', { class: 'profile-kicker' }, 'YOUR REACHMARK ACCOUNT'),
+          h('h2', {}, u?.name || 'Your profile'),
+          h('p', {}, u?.email || ''),
+          h('div', { class: 'profile-badges' },
+            h('span', { class: 'profile-pill ' + (u?.plan === 'plus' ? 'plus' : '') }, icon('spark'), u?.plan === 'plus' ? 'Plus member' : 'Free plan'),
+            h('span', { class: 'profile-pill' }, icon(u?.verified ? 'check' : 'mail'), u?.verified ? 'Email verified' : 'Email pending'))),
+        h('button', { class: 'btn profile-edit-btn', onclick: editProfile }, icon('edit'), 'Edit profile')),
+      h('div', { class: 'profile-metrics' },
+        h('div', {}, h('small', {}, 'Available credits'), h('b', { class: 'credits-b' }, (u?.credits ?? 0).toLocaleString()), h('span', {}, 'Ready to create')),
+        h('div', {}, h('small', {}, 'Current plan'), h('b', {}, u?.plan === 'plus' ? 'Plus' : 'Free'), h('span', {}, u?.plan === 'plus' ? 'Premium access' : 'Upgrade any time'))));
     node.append(h('div', { 'data-stag': '' },
+      h('div', { class: 'profile-page-heading' }, h('div', {}, h('p', {}, 'ACCOUNT SETTINGS'), h('h1', {}, 'Your profile'), h('span', {}, 'Manage your identity, plan and preferences.'))),
+      profileHero,
       verCard,
       pushCard,
-      h('div', { class: 'procard' },
-        h('div', { style: { display: 'flex', gap: '14px', alignItems: 'center' } },
-          h('span', { class: 'avatar', style: { width: '64px', height: '64px', fontSize: '26px' } }, (u?.name || u?.email || '?')[0].toUpperCase()),
-          h('div', { style: { minWidth: 0 } }, h('b', { style: { fontSize: '19px' } }, u?.name), h('small', { class: 'muted', style: { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' } }, u?.email))),
-        h('div', { class: 'inner' },
-          h('span', {}, 'My Team'), h('span', { class: 'badge' }, u?.plan === 'plus' ? 'Plus' : 'Free'),
-          h('span', { class: 'spacer' }), h('span', { class: 'credits' }, icon('spark'), h('b', { class: 'credits-b' }, (u?.credits ?? 0).toLocaleString())))),
       h('div', { style: { height: '14px' } }), upgradeCard,
       h('div', { class: 'sect' }, 'Preferences'),
       h('div', { class: 'row tap', onclick: cycle }, h('div', { class: 'r-ico' }, icon('moon')), h('div', {}, h('b', {}, 'Appearance')), h('div', { class: 'r-end' }, themeVal, icon('chevron'))),
