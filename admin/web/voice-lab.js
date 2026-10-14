@@ -47,6 +47,17 @@ VIEWS['voice-lab'] = async el => {
         <label class="vl-field">Test phrase
           <textarea id="vl-text" maxlength="1200">Hey, it's good to hear from you. Give me a second to check that, and I'll walk you through it.</textarea>
         </label>
+        <div class="vl-agent-test">
+          <div class="vl-eyebrow">Optional · test a real agent reply</div>
+          <label class="vl-field">Your admin workspace agent
+            <select id="vl-agent"><option value="">Loading your agents…</option></select>
+          </label>
+          <label class="vl-field">Message to the agent
+            <textarea id="vl-agent-message" maxlength="1200">Can you explain what you can help me with in a friendly, natural way?</textarea>
+          </label>
+          <button id="vl-agent-speak" class="btn block" disabled>Ask agent and speak the reply</button>
+          <p id="vl-agent-reply" class="vl-foot" aria-live="polite">Choose an agent to test its personality and knowledge using your selected clone.</p>
+        </div>
         <div class="grid g2">
           <label class="vl-field">Delivery style
             <select id="vl-style" disabled>
@@ -87,12 +98,18 @@ VIEWS['voice-lab'] = async el => {
   const consent = el.querySelector('#vl-consent');
   const voiceSelect = el.querySelector('#vl-voice');
   const result = el.querySelector('#vl-result');
+  const agentSelect = el.querySelector('#vl-agent');
+  const agentMessage = el.querySelector('#vl-agent-message');
+  const agentSpeak = el.querySelector('#vl-agent-speak');
+  const agentReply = el.querySelector('#vl-agent-reply');
   let workerReady = false;
   let profiles = [];
+  let agents = [];
 
   const refreshEnabled = () => {
     cloneBtn.disabled = !workerReady || !fileInput.files.length || !consent.checked;
     generateBtn.disabled = !workerReady || !voiceSelect.value || !el.querySelector('#vl-text').value.trim();
+    agentSpeak.disabled = !workerReady || !voiceSelect.value || !agentSelect.value || !agentMessage.value.trim();
   };
   fileInput.addEventListener('change', () => {
     const f = fileInput.files[0];
@@ -149,6 +166,37 @@ VIEWS['voice-lab'] = async el => {
       toast('Voice profile created.');
     } catch (e) { result.textContent = e.message; toast(e.message, true); }
     finally { refreshEnabled(); }
+  });
+
+  agentSpeak.addEventListener('click', async () => {
+    if (!workerReady || !voiceSelect.value || !agentSelect.value) return;
+    agentSpeak.disabled = true;
+    agentReply.textContent = 'Asking the agent…';
+    try {
+      const answer = await api('/api/studio/chat', {
+        agentId: agentSelect.value,
+        message: agentMessage.value.trim(),
+        history: []
+      });
+      const reply = String(answer.content || '').trim();
+      if (!reply) throw new Error('The agent returned an empty reply.');
+      agentReply.textContent = 'Agent reply: ' + reply;
+      const spoken = await api('/api/voice-lab/synthesize', {
+        voiceId: voiceSelect.value,
+        text: reply,
+        style: el.querySelector('#vl-style').value,
+        pacing: el.querySelector('#vl-pacing').value
+      });
+      if (!spoken.audioUrl) throw new Error('Worker did not return an audio URL.');
+      const audio = el.querySelector('#vl-audio');
+      audio.src = spoken.audioUrl;
+      el.querySelector('#vl-audio-wrap').classList.remove('hidden');
+      result.textContent = 'Agent reply generated and spoken using the selected cloned voice.';
+      audio.play().catch(() => {});
+    } catch (e) {
+      agentReply.textContent = e.message;
+      toast(e.message, true);
+    } finally { refreshEnabled(); }
   });
 
   generateBtn.addEventListener('click', async () => {
