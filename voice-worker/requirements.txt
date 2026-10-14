@@ -1,0 +1,7 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+soundfile>=0.12,<1
+huggingface_hub>=0.23,<1
+pydantic>=2.7,<3
+# Install torch/torchaudio for the CUDA version supported by your NVIDIA driver first.
+# Then install OpenVoice and MeloTTS from their official repositories.
