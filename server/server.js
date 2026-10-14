@@ -351,10 +351,10 @@ const server = http.createServer(async (req, res) => {
       if (!store.rateLimit('profile:' + uid, 10, 60 * 60 * 1000))
         return json(res, 429, { error: 'Too many profile changes. Please try again later.' });
       const b = JSON.parse(await readBody(req, 1e5));
-      const name = str(b.name, 60)?.trim().replace(/\\s+/g, ' ') || '';
+      const name = str(b.name, 60)?.trim().replace(/\s+/g, ' ') || '';
       if (name.length < 2 || name.length > 48)
         return json(res, 400, { error: 'Display name must be between 2 and 48 characters.' });
-      if (/[\\u0000-\\u001f\\u007f<>]/.test(name))
+      if (/[\u0000-\u001f\u007f<>]/.test(name))
         return json(res, 400, { error: 'Please use a valid display name.' });
       user.name = name;
       store.users.save(user);
