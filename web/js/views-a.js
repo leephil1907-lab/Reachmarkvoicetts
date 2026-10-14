@@ -84,16 +84,16 @@ routes['/home'] = {
     const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const stats = h('div', { class: 'stats', 'data-stag': '' },
       h('div', { class: 'stat' }, h('span', { class: 's-ico' }, icon('spark')), h('b', { class: 'credits-b' }, (db.user?.credits ?? 0).toLocaleString()), h('small', {}, 'credits')),
-      h('div', { class: 'stat' }, h('span', { class: 's-ico warm' }, icon('mic')), h('b', {}, String(db.voices.length)), h('small', {}, 'voices · ' + (db.user?.plan === 'plus' ? '10' : '3') + ' slots')),
-      h('div', { class: 'stat' }, h('span', { class: 's-ico vio' }, icon('wave')), h('b', {}, String(db.history.length)), h('small', {}, 'renders')),
+      h('div', { class: 'stat' }, h('span', { class: 's-ico warm' }, icon('audioFile')), h('b', {}, String(db.voices.length)), h('small', {}, 'voices · ' + (db.user?.plan === 'plus' ? '10' : '3') + ' slots')),
+      h('div', { class: 'stat' }, h('span', { class: 's-ico vio' }, icon('audioWaveform')), h('b', {}, String(db.history.length)), h('small', {}, 'renders')),
       h('div', { class: 'stat' }, h('span', { class: 's-ico cyan' }, icon('clock')), h('b', {}, (db.user?.minutes || 0).toFixed(1)), h('small', {}, 'studio minutes')));
     const quick = h('div', { class: 'qgrid', 'data-stag': '' },
-      [['/studio/tts', 'text', 'Text to Speech', 'Type it — hear it in any voice, any language'],
-       ['/studio/clone', 'copy', 'Voice Match', 'Clone a voice from 10 seconds of audio'],
-       ['/studio/changer', 'swap', 'Voice Changer', 'Pitch, timbre and FX chains on any recording'],
-       ['/studio/dub', 'globe', 'Dubbing Studio', 'Translate and re-voice video with downloads'],
-       ['/studio/lip', 'film', 'Lip Sync', 'Match speech to footage, export WebM'],
-       ['/studio/design', 'wand', 'Voice Design', 'Design a new voice from plain traits']]
+      [['/studio/tts', 'audioLines', 'Text to Speech', 'Type it — hear it in any voice, any language'],
+       ['/studio/clone', 'fingerprint', 'Voice Match', 'Clone a voice from 10 seconds of audio'],
+       ['/studio/changer', 'audioWaveform', 'Voice Changer', 'Pitch, timbre and FX chains on any recording'],
+       ['/studio/dub', 'languages', 'Dubbing Studio', 'Translate and re-voice video with downloads'],
+       ['/studio/lip', 'video', 'Lip Sync', 'Match speech to footage, export WebM'],
+       ['/studio/design', 'wandSparkles', 'Voice Design', 'Design a new voice from plain traits']]
         .map(([path, ic, label, desc]) => h('button', { class: 'qcard', onclick: () => navigate(path) },
           h('span', { class: 'qi' }, icon(ic)),
           h('span', { class: 'qt' }, h('b', {}, label), h('small', {}, desc)),
