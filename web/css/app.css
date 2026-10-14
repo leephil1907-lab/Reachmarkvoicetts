@@ -1004,3 +1004,35 @@ input,textarea{user-select:text;-webkit-user-select:text}
 @media(prefers-reduced-motion:reduce){
   .gate-eyebrow i,.ring-a,.ring-b,.wave-bars i{animation:none!important}
 }
+
+
+/* ---------- motion refinement pass: depth without noise ---------- */
+#bg::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.12;
+  background-image:linear-gradient(to right,color-mix(in srgb,var(--line2) 55%,transparent) 1px,transparent 1px),
+                   linear-gradient(to bottom,color-mix(in srgb,var(--line2) 55%,transparent) 1px,transparent 1px);
+  background-size:64px 64px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 36%,#000 0%,transparent 76%);
+  mask-image:radial-gradient(ellipse at 50% 36%,#000 0%,transparent 76%);
+}
+#bg .aurora-canvas{
+  position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;
+  opacity:.27;mix-blend-mode:screen;pointer-events:none;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 42%,#000 18%,transparent 94%);
+  mask-image:radial-gradient(ellipse at 50% 42%,#000 18%,transparent 94%);
+}
+#bg .b1,#bg .b2{z-index:1}
+#bg .grain{z-index:3}
+.view{transform-origin:50% 0%;backface-visibility:hidden}
+.view.leaving{animation:viewOut .18s cubic-bezier(.4,0,.2,1) both}
+@media (min-width:960px) and (pointer:fine){
+  .qcard,.lp-card,.voicecard,.stat{transform-style:preserve-3d}
+  .qcard .qi,.lp-card .qi{transition:transform .32s cubic-bezier(.22,.9,.28,1),background .25s}
+  .qcard:hover .qi,.lp-card:hover .qi{transform:translateZ(10px) scale(1.04)}
+}
+@media (prefers-reduced-motion:reduce){
+  #bg .b1,#bg .b2{animation:none!important}
+  #bg .aurora-canvas{display:none!important}
+  #bg::after{opacity:.06}
+  .view,.view.leaving{filter:none!important;transform:none!important}
+}
