@@ -72,7 +72,7 @@ self.addEventListener('fetch', e => {
     const hit = await cache.match(e.request);
     const refresh = fetch(e.request).then(async response => {
       const policy = response.headers.get('cache-control') || '';
-      if (response.ok && response.type === 'basic' && !/\\b(no-store|private)\\b/i.test(policy)) {
+      if (response.ok && response.type === 'basic' && !/\b(no-store|private)\b/i.test(policy)) {
         await cache.put(e.request, response.clone());
       }
       return response;
