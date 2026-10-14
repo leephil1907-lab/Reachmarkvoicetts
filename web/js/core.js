@@ -441,16 +441,19 @@ function chromeFor(route, path) {
 
 /* ---------------- shared UI builders ---------------- */
 export function playerNode() {
-  const canvas = h('canvas');
-  const pbtn = h('button', { class: 'pbtn', html: icons.play, 'aria-label': 'Play' });
-  const time = h('span', { class: 'ptime' }, '0:00');
-  const node = h('div', { class: 'player' }, pbtn, canvas, time);
+  const canvas = h('canvas', { role: 'slider', tabindex: '0', 'aria-label': 'Audio waveform seek', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' });
+  const pbtn = h('button', { class: 'pbtn', html: icons.play, 'aria-label': 'Play audio', 'aria-pressed': 'false', title: 'Play audio' });
+  const time = h('span', { class: 'ptime', 'aria-live': 'off' }, '0:00 / 0:00');
+  const node = h('div', { class: 'player', role: 'group', 'aria-label': 'Audio playback controls' }, pbtn, canvas, time);
   return { node, canvas, pbtn, time };
 }
 export function emptyState(title, sub) {
-  return h('div', { class: 'empty' },
-    h('span', { html: `<svg viewBox="0 0 200 140" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M84 18c14 10 22 26 24 44 1 12 0 24-3 36"/><path d="M108 98c-2-14 2-26 10-34 4 10 4 22 0 34"/><path d="M108 62c8-10 10-22 8-34-8 6-12 16-12 26"/><path d="M40 108c10-6 22-8 34-6M126 108c10-4 22-4 32 0"/><path d="M30 112c20 8 44 10 70 10s50-2 70-10"/><circle cx="60" cy="80" r="1.6"/><circle cx="52" cy="88" r="1.2"/><circle cx="140" cy="60" r="1.6"/><circle cx="148" cy="70" r="1.2"/><circle cx="132" cy="46" r="1.2"/><path d="M118 40c6-8 14-12 22-14M124 48c8-6 16-8 24-8"/></svg>` }),
-    h('b', {}, title), sub ? h('span', { class: 'tiny faint', style: { display: 'block', marginTop: '8px', maxWidth: '280px' } }, sub) : null);
+  const text = String(title || '').toLowerCase();
+  const glyph = /voice|agent|character/.test(text) ? 'micStudio' : /history|project|render|audio/.test(text) ? 'audioFile' : /match|search/.test(text) ? 'search' : 'audioWaveform';
+  return h('div', { class: 'empty', role: 'status' },
+    h('span', { class: 'empty-mark' }, icon(glyph)),
+    h('b', {}, title),
+    sub ? h('span', { class: 'tiny faint empty-copy' }, sub) : null);
 }
 export const fmtTime = s => { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
