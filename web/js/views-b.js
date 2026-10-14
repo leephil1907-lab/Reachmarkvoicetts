@@ -223,8 +223,10 @@ routes['/agents'] = {
           btns,
           h('button', { class: 'iconbtn', html: icons.chevD, 'aria-label': 'More', onclick: e => dropdown(e.currentTarget, [
             { icon: 'send', label: 'Open chat', onClick: () => navigate('/agent/' + a.id) },
-            { icon: 'phone', label: 'Voice call', onClick: () => navigate('/call/' + a.id) },
-            ...a.system ? [] : ['-', { icon: 'trash', label: 'Delete agent', danger: true, onClick: async () => { await deleteAgent(a.id); render(); toast(a.name + ' deleted', 'trash'); } }],
+            { icon: 'phone', label: 'Direct phone call', onClick: () => navigate('/call/' + a.id) },
+            ...a.system ? [] : [
+              { icon: 'globe', label: 'Connect WhatsApp & Telegram', onClick: () => navigate('/agent/' + a.id + '/channels') },
+              '-', { icon: 'trash', label: 'Delete agent', danger: true, onClick: async () => { await deleteAgent(a.id); render(); toast(a.name + ' deleted', 'trash'); } }],
           ]) }));
         list.append(card);
       });
@@ -235,6 +237,7 @@ routes['/agents'] = {
       const role = h('input', { class: 'input', placeholder: 'Role — e.g. Customer care lead for Reachmark Digital' });
       const persona = h('textarea', { class: 'ta', style: { minHeight: '80px' }, placeholder: 'Personality & tone — warm, concise, playful…' });
       const know = h('textarea', { class: 'ta', style: { minHeight: '80px' }, placeholder: 'Knowledge base, one fact per line:\nHours are 9am-6pm WAT\nPricing starts at $25/month\nWe support voice cloning and dubbing' });
+      const memory = h('textarea', { class: 'ta', style: { minHeight: '72px' }, maxlength: '3000', placeholder: 'Persistent memory / operating context: customer facts, preferences, boundaries, and details the agent should retain across channels.' });
       const greet = h('input', { class: 'input', placeholder: 'Greeting — e.g. Hi! Amara here, how can I help?' });
       const vSel = { id: state.defaultVoiceId };
       const AVATARS = ['micStudio', 'bot', 'user', 'star', 'film', 'wave', 'phone', 'wand'];
@@ -275,6 +278,8 @@ routes['/agents'] = {
         h('label', { class: 'fld' }, 'Personality traits'), trRow,
         h('label', { class: 'fld' }, 'Persona'), persona,
         h('label', { class: 'fld' }, 'Knowledge base'), know,
+        h('label', { class: 'fld' }, 'Persistent memory & boundaries'), memory,
+        h('small', { class: 'tiny faint' }, 'This context is included in agent replies. Messaging conversations also retain per-contact history across sessions.'),
         h('label', { class: 'fld' }, 'Voice'), voicePicker(vSel),
         h('label', { class: 'fld' }, 'Language'), langPicker(langSel),
         h('label', { class: 'fld' }, 'Greeting'), greet,
@@ -283,7 +288,7 @@ routes['/agents'] = {
           try {
             const traits = [...pick.traits];
             const personaTxt = [persona.value.trim(), traits.length ? 'Traits: ' + traits.join(', ') + '.' : ''].filter(Boolean).join(' ');
-            const a = await addAgent({ name: name.value.trim(), role: role.value.trim() || 'Reachmark assistant', persona: personaTxt, traits, emoji: pick.emoji, language: langSel.lang, knowledge: know.value.split('\n').map(s => s.trim()).filter(Boolean), greeting: greet.value.trim() || ('Hi, ' + name.value.trim() + ' here! How can I help?'), voiceId: vSel.id?.startsWith('m:') ? null : vSel.id, model: vSel.id?.startsWith('m:') ? vSel.id.slice(2) : null, av: ['', 'warm', 'vio'][db.agents.length % 3], avatarImage });
+            const a = await addAgent({ name: name.value.trim(), role: role.value.trim() || 'Reachmark assistant', persona: personaTxt, traits, emoji: pick.emoji, language: langSel.lang, knowledge: know.value.split('\n').map(s => s.trim()).filter(Boolean), memory: memory.value.trim(), greeting: greet.value.trim() || ('Hi, ' + name.value.trim() + ' here! How can I help?'), voiceId: vSel.id?.startsWith('m:') ? null : vSel.id, model: vSel.id?.startsWith('m:') ? vSel.id.slice(2) : null, av: ['', 'warm', 'vio'][db.agents.length % 3], avatarImage });
             render(); close();
             toast(a.name + ' is live', 'bot');
             navigate('/agent/' + a.id);
@@ -293,6 +298,91 @@ routes['/agents'] = {
     node.append(h('div', { 'data-stag': '' },
       h('button', { class: 'btn lime block', onclick: builder }, icon('plus'), 'New character agent'),
       h('div', { class: 'sect' }, 'Your agents'), list));
+  },
+};
+
+
+/* ---------- agent channel connections ---------- */
+routes['/agent/:id/channels'] = {
+  title: 'Agent channels', tab: 'agents',
+  top: (p) => ({ back: true, title: 'Agent channels', sub: db.agents.find(a => a.id === p.split('/')[2])?.name || 'Connect messaging' }),
+  view: async ({ node, params }) => {
+    const a = db.agents.find(x => x.id === params[0]);
+    if (!a || a.system) return node.append(emptyState('This agent cannot connect external channels.'));
+    const tgToken = h('input', { class: 'input', type: 'password', autocomplete: 'off', placeholder: 'Telegram bot token from @BotFather' });
+    const waPhone = h('input', { class: 'input', inputmode: 'numeric', placeholder: 'WhatsApp Phone Number ID' });
+    const waToken = h('input', { class: 'input', type: 'password', autocomplete: 'off', placeholder: 'Permanent or system-user access token' });
+    const waSecret = h('input', { class: 'input', type: 'password', autocomplete: 'off', placeholder: 'Meta app secret' });
+    const connected = h('div', { class: 'stack', style: { gap: '8px' } });
+    const waSetup = h('div', { class: 'card flat', hidden: true });
+    const status = h('small', { class: 'muted' }, 'Loading secure channel status…');
+    const renderConnections = async () => {
+      try {
+        const r = await api('/api/agents/' + encodeURIComponent(a.id) + '/channels');
+        connected.replaceChildren();
+        const channels = r.channels || [];
+        if (!r.encryptionConfigured) status.textContent = 'Secure channel storage needs APP_ENCRYPTION_KEY (32+ characters) in the hosting environment.';
+        else status.textContent = channels.length ? 'Connected channels share this agent’s personality, knowledge and per-contact conversation context.' : 'No messaging channels connected yet.';
+        for (const ch of channels) {
+          const row = h('div', { class: 'card flat', style: { display: 'flex', gap: '10px', alignItems: 'center' } },
+            h('span', { class: 'avatar', style: { background: 'var(--lime)', color: '#171a09' } }, icon(ch.provider === 'telegram' ? 'send' : 'messageCircle')),
+            h('div', { style: { flex: 1, minWidth: 0 } }, h('b', {}, ch.provider === 'telegram' ? 'Telegram' : 'WhatsApp'),
+              h('small', { class: 'muted', style: { display: 'block' } }, ch.provider === 'telegram' ? '@' + (ch.botUsername || 'connected bot') : (ch.displayPhoneNumber || ch.phoneNumberId || 'WhatsApp Business'))),
+            h('button', { class: 'btn sm danger', onclick: async () => {
+              try { await api('/api/agents/' + encodeURIComponent(a.id) + '/channels/' + ch.provider + '/disconnect', { method: 'POST', body: {} }); toast(ch.provider + ' disconnected', 'close'); await renderConnections(); }
+              catch (e) { toast(e.message, 'close'); }
+            } }, 'Disconnect'));
+          connected.append(row);
+          if (ch.provider === 'whatsapp') {
+            waSetup.hidden = false;
+            waSetup.replaceChildren(
+              h('b', {}, 'Finish WhatsApp webhook setup in Meta'),
+              h('p', { class: 'tiny muted' }, 'In Meta for Developers → WhatsApp → Configuration, set the callback URL and verify token below, verify the webhook, then subscribe to the messages field. Keep your access token and app secret private.'),
+              h('label', { class: 'fld' }, 'Callback URL'),
+              h('input', { class: 'input', readonly: true, value: ch.callbackUrl || '' }),
+              h('label', { class: 'fld' }, 'Verify token'),
+              h('input', { class: 'input', readonly: true, value: ch.verifyToken || '' }),
+              h('button', { class: 'btn sm', onclick: () => GenUI.copy(ch.callbackUrl || '') }, icon('copy'), 'Copy callback URL'),
+              h('button', { class: 'btn sm', onclick: () => GenUI.copy(ch.verifyToken || '') }, icon('copy'), 'Copy verify token'));
+          }
+        }
+      } catch (e) { status.textContent = e.message; }
+    };
+    const tgBtn = h('button', { class: 'btn primary block', onclick: async () => {
+      if (!tgToken.value.trim()) return toast('Paste the bot token from BotFather.', 'send');
+      tgBtn.disabled = true;
+      try { const r = await api('/api/agents/' + encodeURIComponent(a.id) + '/channels/telegram', { method: 'POST', body: { botToken: tgToken.value.trim() } }); tgToken.value = ''; toast('Telegram connected' + (r.channel.botUsername ? ' · @' + r.channel.botUsername : ''), 'check'); await renderConnections(); }
+      catch (e) { toast(e.message, 'close'); }
+      finally { tgBtn.disabled = false; }
+    } }, icon('send'), 'Connect Telegram bot');
+    const waBtn = h('button', { class: 'btn primary block', onclick: async () => {
+      if (!waPhone.value.trim() || !waToken.value.trim() || !waSecret.value.trim()) return toast('Complete all three WhatsApp fields.', 'messageCircle');
+      waBtn.disabled = true;
+      try {
+        const r = await api('/api/agents/' + encodeURIComponent(a.id) + '/channels/whatsapp', { method: 'POST', body: { phoneNumberId: waPhone.value.trim(), accessToken: waToken.value.trim(), appSecret: waSecret.value.trim() } });
+        waToken.value = ''; waSecret.value = '';
+        toast('WhatsApp credentials verified', 'check');
+        await renderConnections();
+      } catch (e) { toast(e.message, 'close'); }
+      finally { waBtn.disabled = false; }
+    } }, icon('messageCircle'), 'Verify & connect WhatsApp');
+    node.append(h('div', { 'data-stag': '' },
+      h('div', { class: 'card', style: { background: 'linear-gradient(140deg, color-mix(in srgb, var(--lime) 12%, var(--card)), var(--card))' } },
+        h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } },
+          a.avatarImage ? h('img', { src: a.avatarImage, alt: a.name, style: { width: '54px', height: '54px', borderRadius: '16px', objectFit: 'cover' } }) : h('span', { class: 'avatar ' + (a.av || '') }, a.emoji || a.name[0]),
+          h('div', { style: { flex: 1 } }, h('b', {}, a.name), h('small', { class: 'muted', style: { display: 'block' } }, 'Connect this agent to the conversations your customers already use.')))),
+      h('div', { class: 'sect' }, 'Connected channels'),
+      status, connected, waSetup,
+      h('div', { class: 'sect' }, 'Telegram'),
+      h('p', { class: 'tiny muted' }, 'Create a bot with @BotFather, copy its token here, and Reachmark will verify the bot and register a signed webhook automatically.'),
+      h('label', { class: 'fld' }, 'Bot token'), tgToken, tgBtn,
+      h('div', { class: 'sect' }, 'WhatsApp Business Platform'),
+      h('p', { class: 'tiny muted' }, 'Use credentials from your Meta WhatsApp Cloud API app. Reachmark verifies the phone-number ID and access token, then gives you a callback URL and verify token to add in Meta. Your credentials are encrypted at rest.'),
+      h('label', { class: 'fld' }, 'Phone Number ID'), waPhone,
+      h('label', { class: 'fld' }, 'Access token'), waToken,
+      h('label', { class: 'fld' }, 'Meta app secret'), waSecret, waBtn,
+      h('p', { class: 'tiny faint', style: { lineHeight: 1.6 } }, 'Keep tokens private. The server needs APP_ENCRYPTION_KEY configured before storing channel credentials. Incoming text is answered by this agent; conversation context is stored per contact. WhatsApp webhook verification and message subscriptions must be completed in Meta.')));
+    await renderConnections();
   },
 };
 
