@@ -546,6 +546,7 @@ const server = http.createServer(async (req, res) => {
         { role: 'assistant', content: reply, at: Date.now() },
       ]).slice(-100);
       store.calls.patchAny(call.id, { history: nextHistory, transcript, lastTurnAt: Date.now() });
+      store.conversations.save(call.uid, agent.id, 'phone', call.toNumber, { history: nextHistory, transcript: (store.conversations.get('phone', agent.id, call.toNumber)?.transcript || []).concat(transcript.slice(-2)).slice(-100), lastMessageAt: Date.now() });
       if (/\b(goodbye|end the call|hang up|that's all for now)\b/i.test(speech)) return twiml(res, telephony.say('Thank you for your time. Goodbye.') + telephony.hangup());
       try {
         const clip = await createCallAudio(call.uid, agent, reply, call.id);
@@ -796,7 +797,8 @@ const server = http.createServer(async (req, res) => {
         token: crypto.randomBytes(32).toString('hex'),
         uid, agentId: agent.id, toNumber: to, mode, durationSec, script,
         status: 'preparing', providerStatus: null, created: Date.now(),
-        startedAt: null, endedAt: null, history: [], transcript: [],
+        startedAt: null, endedAt: null,
+        history: (store.conversations.get('phone', agent.id, to)?.history || []).slice(-12), transcript: [],
       };
       try {
         if (mode === 'fixed') {
@@ -989,13 +991,21 @@ const server = http.createServer(async (req, res) => {
       const agent = store.agents.get(uid, str(b.agentId, 40));
       if (!agent) return json(res, 404, { error: 'Agent not found.' });
       if (agent.disabled) return json(res, 403, { error: 'This agent has been disabled by support.' });
-      const history = Array.isArray(b.history)
+      const clientHistory = Array.isArray(b.history)
         ? b.history.slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: str(m.content, 1500) })).filter(m => m.content)
         : [];
+      const savedContext = store.conversations.get('web', agent.id, uid);
+      const history = Array.isArray(savedContext?.history) && savedContext.history.length ? savedContext.history.slice(-12) : clientHistory;
       const run = async () => {
         let out = null;
         try { out = await llm.chat({ agent, history, message }); } catch {}
         if (!out) out = { content: brainS.respond(agent, message), source: 'local' };
+        const nextHistory = history.concat([{ role: 'user', content: message }, { role: 'assistant', content: String(out.content || '').slice(0, 1500) }]).slice(-12);
+        const transcript = (Array.isArray(savedContext?.transcript) ? savedContext.transcript : []).concat([
+          { role: 'user', content: message, at: Date.now() },
+          { role: 'assistant', content: String(out.content || '').slice(0, 1500), at: Date.now() },
+        ]).slice(-100);
+        store.conversations.save(uid, agent.id, 'web', uid, { history: nextHistory, transcript, lastMessageAt: Date.now() });
         return out;
       };
       if (agent.system) { const out = await run(); return json(res, 200, out); } // platform Guide is free
