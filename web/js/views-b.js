@@ -338,8 +338,109 @@ routes['/agent/:id'] = {
 };
 
 /* ---------- call ---------- */
+
+/* ---------- Direct phone call + call history ---------- */
 routes['/call/:id'] = {
-  title: 'Voice call', tab: 'agents',
+  title: 'Direct Call', tab: 'agents',
+  top: () => ({ back: true, title: 'Direct Call', sub: 'Your agent · a real phone number' }),
+  view: async ({ node, params }) => {
+    const a = db.agents.find(x => x.id === params[0]);
+    if (!a) return node.append(emptyState('Agent not found'));
+    let mode = 'live', durationSec = 60, activeCallId = null, poll = null;
+    const phone = h('input', { class: 'input', type: 'tel', inputmode: 'tel', autocomplete: 'tel', placeholder: '+14155550123', maxlength: '16' });
+    const durations = h('div', { class: 'pills' });
+    const modeRow = h('div', { class: 'pills' });
+    const script = h('textarea', { class: 'ta', style: { minHeight: '110px' }, maxlength: '2000', placeholder: 'Write the exact announcement your agent should deliver. It will repeat until the selected time limit.' });
+    const scriptWrap = h('div', { class: 'stack', style: { gap: '8px' } });
+    const consent = h('input', { type: 'checkbox' });
+    const status = h('div', { class: 'card flat', style: { display: 'flex', gap: '10px', alignItems: 'center' } }, icon('phone'), h('div', {}, h('b', {}, 'Checking phone provider…'), h('small', { class: 'muted' }, 'Calls require configured telephony credentials.')));
+    const result = h('div', { class: 'stack', style: { gap: '8px' } });
+    const startBtn = h('button', { class: 'btn lime block', onclick: async () => {
+      if (!/^\+[1-9]\d{7,14}$/.test(phone.value.trim().replace(/[\s().-]/g, ''))) return toast('Enter a valid international number, including country code.', 'phone');
+      if (!consent.checked) return toast('Confirm that the recipient has agreed to receive this call.', 'shieldCheck');
+      if (mode === 'fixed' && script.value.trim().length < 10) return toast('Write an announcement of at least 10 characters.', 'text');
+      startBtn.disabled = true; startBtn.replaceChildren(h('i', { class: 'spin' }), 'Connecting call…');
+      try {
+        const r = await api('/api/telephony/calls', { method: 'POST', body: { agentId: a.id, toNumber: phone.value.trim(), mode, durationSec, script: script.value.trim(), consent: consent.checked } });
+        activeCallId = r.call.id;
+        toast('Call requested · ' + r.call.status, 'phone');
+        result.replaceChildren(
+          h('div', { class: 'card', style: { borderColor: 'color-mix(in srgb, var(--lime) 40%, var(--line))' } },
+            h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } },
+              h('span', { class: 'avatar', style: { background: 'var(--lime)', color: '#171a09' } }, icon('phone')),
+              h('div', { style: { flex: 1, minWidth: 0 } }, h('b', {}, 'Call to ' + r.call.toNumber), h('small', { class: 'muted', style: { display: 'block' } }, (mode === 'live' ? 'Live conversation' : 'Fixed-duration announcement') + ' · max ' + r.call.durationSec + ' seconds')),
+              h('span', { class: 'badge' }, r.call.status.toUpperCase())),
+            h('p', { class: 'muted tiny', style: { margin: '10px 0 0' } }, 'The recipient will hear an AI disclosure first. The provider enforces the maximum call duration.')),
+        );
+        if (poll) clearInterval(poll);
+        poll = setInterval(async () => {
+          try {
+            const state = await api('/api/telephony/calls/' + encodeURIComponent(activeCallId));
+            const c = state.call;
+            const badge = result.querySelector('.badge');
+            if (badge) badge.textContent = String(c.status || c.providerStatus || 'unknown').toUpperCase();
+            if (['completed','busy','failed','no-answer','canceled'].includes(c.status)) {
+              clearInterval(poll); poll = null;
+              toast('Call ended · ' + c.status, 'phoneOff');
+            }
+          } catch {}
+        }, 5000);
+      } catch (e) { toast(e.message, 'close'); }
+      finally { startBtn.disabled = false; startBtn.replaceChildren(icon('phone'), 'Call now'); }
+    } }, icon('phone'), 'Call now');
+    const renderMode = () => {
+      modeRow.replaceChildren(
+        h('button', { class: 'chip' + (mode === 'live' ? ' on' : ''), onclick: () => { mode = 'live'; renderMode(); } }, icon('messageCircle'), 'Live conversation'),
+        h('button', { class: 'chip' + (mode === 'fixed' ? ' on' : ''), onclick: () => { mode = 'fixed'; renderMode(); } }, icon('clock'), 'Fixed duration'));
+      scriptWrap.hidden = mode !== 'fixed';
+      startBtn.replaceChildren(icon('phone'), mode === 'live' ? 'Call agent' : 'Start announcement call');
+    };
+    [30, 60, 180, 300].forEach(n => durations.append(h('button', { class: 'chip' + (n === durationSec ? ' on' : ''), onclick: () => { durationSec = n; [...durations.children].forEach((el, i) => el.classList.toggle('on', [30,60,180,300][i] === n)); } }, n < 60 ? n + ' sec' : n / 60 + ' min')));
+    scriptWrap.append(h('label', { class: 'fld' }, 'Announcement script'), script);
+    renderMode();
+    const history = h('div', { class: 'stack', style: { gap: '8px' } });
+    const loadCalls = async () => {
+      try {
+        const s = await api('/api/telephony/status');
+        status.replaceChildren(icon(s.configured ? 'check' : 'phone'), h('div', {},
+          h('b', {}, s.configured ? 'Phone provider connected' : 'Phone provider not configured'),
+          h('small', { class: 'muted' }, s.configured ? 'Outbound calls are available for this deployment.' : 'Add Twilio credentials and an HTTPS PUBLIC_URL in the deployment environment.')));
+        history.replaceChildren();
+        const calls = (s.calls || []).filter(c => c.agentId === a.id).slice(0, 5);
+        if (!calls.length) history.append(h('div', { class: 'tiny faint' }, 'Your recent calls will appear here.'));
+        calls.forEach(c => history.append(h('div', { class: 'row', style: { border: '1px solid var(--line)', borderRadius: '14px', padding: '11px 12px' } },
+          h('div', { class: 'r-ico' }, icon(c.mode === 'live' ? 'messageCircle' : 'clock')),
+          h('div', { style: { flex: 1, minWidth: 0 } }, h('b', {}, c.toNumber), h('small', { class: 'muted', style: { display: 'block' } }, (c.mode === 'live' ? 'Live conversation' : 'Fixed announcement') + ' · ' + new Date(c.created).toLocaleString())),
+          h('span', { class: 'badge' }, String(c.status || c.providerStatus || 'unknown').toUpperCase()))));
+      } catch (e) { status.replaceChildren(icon('phone'), h('div', {}, h('b', {}, 'Could not check call provider'), h('small', { class: 'muted' }, e.message))); }
+    };
+    node.append(h('div', { 'data-stag': '' },
+      h('div', { class: 'card', style: { background: 'linear-gradient(140deg, color-mix(in srgb, var(--lime) 12%, var(--card)), var(--card))' } },
+        h('div', { style: { display: 'flex', gap: '13px', alignItems: 'center' } },
+          a.avatarImage ? h('img', { src: a.avatarImage, alt: a.name, style: { width: '54px', height: '54px', borderRadius: '16px', objectFit: 'cover' } }) : h('span', { class: 'avatar ' + (a.av || '') }, a.emoji || a.name[0]),
+          h('div', { style: { minWidth: 0, flex: 1 } }, h('b', {}, a.name), h('small', { class: 'muted', style: { display: 'block' } }, a.role || 'AI agent'), h('small', { class: 'tiny faint' }, 'Uses this agent’s personality, knowledge, memory context and configured voice.')))),
+      status,
+      h('div', { class: 'sect' }, 'Call setup'),
+      h('label', { class: 'fld' }, 'Recipient phone number · international format'), phone,
+      h('small', { class: 'tiny faint' }, 'Example: +14155550123. Calls are placed through your configured phone provider.'),
+      h('label', { class: 'fld' }, 'Call type'), modeRow,
+      h('label', { class: 'fld' }, 'Maximum call duration'), durations,
+      scriptWrap,
+      h('label', { class: 'row', style: { alignItems: 'flex-start', gap: '10px', padding: '12px 0' } }, consent,
+        h('span', { class: 'tiny muted' }, 'I confirm the recipient has agreed to receive this call, I am authorized to contact them, and the number is correct. I understand the call begins with an AI disclosure.')),
+      startBtn,
+      h('button', { class: 'btn block', style: { marginTop: '8px' }, onclick: () => navigate('/practice-call/' + a.id) }, icon('headphones'), 'Practice with this agent in browser'),
+      h('p', { class: 'tiny faint', style: { lineHeight: 1.6 } }, 'Live conversation listens for the recipient’s speech and replies in the agent’s configured voice. Fixed duration repeats your script until the selected time limit. Calls require Twilio setup and may incur carrier charges. Only call recipients who have agreed to be contacted; do not use this feature for spam or deceptive calls.'),
+      h('div', { class: 'sect' }, 'Recent calls'),
+      history,
+      result));
+    await loadCalls();
+    routeCleanup.push(() => { if (poll) clearInterval(poll); });
+  },
+};
+
+routes['/practice-call/:id'] = {
+  title: 'Practice call', tab: 'agents',
   top: () => null,
   view: async ({ node, params }) => {
     const a = db.agents.find(x => x.id === params[0]);
@@ -400,7 +501,6 @@ routes['/call/:id'] = {
     }, 1400);
   },
 };
-
 /* ================= SUPPORT CENTER ================= */
 routes['/support'] = {
   title: 'Support Center', tab: 'account',
@@ -428,7 +528,7 @@ routes['/support'] = {
       h('div', { class: 'sect' }, 'Talk to us'),
       h('div', { class: 'row tap', onclick: () => navigate('/support/chat') }, h('div', { class: 'r-ico' }, icon('send')), h('div', {}, h('b', {}, 'Live chat'), h('small', {}, 'Start with the Guide bot · escalate to a human anytime')), h('div', { class: 'r-end' }, h('span', { class: 'dot on' }), icon('chevron'))),
       h('div', { class: 'row tap', onclick: () => navigate('/agent/guide') }, h('div', { class: 'r-ico' }, icon('bot')), h('div', {}, h('b', {}, 'Guide agent chat'), h('small', {}, 'Character chat with Reachmark Guide — knows every studio')), h('div', { class: 'r-end' }, icon('chevron'))),
-      h('div', { class: 'row tap', onclick: () => navigate('/call/guide') }, h('div', { class: 'r-ico' }, icon('phone')), h('div', {}, h('b', {}, 'Support session'), h('small', {}, 'Voice call with the Guide agent')), h('div', { class: 'r-end' }, icon('chevron'))),
+      h('div', { class: 'row tap', onclick: () => navigate('/practice-call/guide') }, h('div', { class: 'r-ico' }, icon('phone')), h('div', {}, h('b', {}, 'Support session'), h('small', {}, 'Voice call with the Guide agent')), h('div', { class: 'r-end' }, icon('chevron'))),
       h('div', { class: 'row tap', onclick: () => location.href = 'mailto:reachmarkofficial@gmail.com' }, h('div', { class: 'r-ico' }, icon('mail')), h('div', {}, h('b', {}, 'reachmarkofficial@gmail.com'), h('small', {}, 'General & account enquiries')), h('div', { class: 'r-end' }, icon('external'))),
       h('div', { class: 'row tap', onclick: () => location.href = 'mailto:support@reachmarkdigital.com' }, h('div', { class: 'r-ico' }, icon('mail')), h('div', {}, h('b', {}, 'support@reachmarkdigital.com'), h('small', {}, 'Technical support & billing')), h('div', { class: 'r-end' }, icon('external'))),
       h('div', { class: 'sect' }, 'The fine print'),
