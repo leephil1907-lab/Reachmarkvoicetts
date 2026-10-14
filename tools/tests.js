@@ -65,7 +65,7 @@ async function waitUp(url, tries = 60) {
   const env = {
     ...process.env, DATA_DIR: DATA, PORT: '8123', ADMIN_PORT: '8124',
     ADMIN_EMAIL, ADMIN_PASSWORD: ADMIN_PASS, SUPPORT_EMAIL: 'support@test.local',
-    LLM_API_KEY: '',
+    LLM_API_KEY: '', APP_ENCRYPTION_KEY: '', TWILIO_ACCOUNT_SID: '', TWILIO_AUTH_TOKEN: '', TWILIO_FROM_NUMBER: '',
   };
   // refuse to run against a stray server squatting the test ports (a leaked child
   // from a crashed run silently hijacks the whole suite — seen it, fixed it)
