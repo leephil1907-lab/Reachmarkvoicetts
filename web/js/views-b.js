@@ -703,7 +703,7 @@ routes['/account'] = {
       }; }
     };
     refreshPush();
-    const initials = (u?.name || u?.email || '?').trim().split(/\\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() || '').join('');
+    const initials = (u?.name || u?.email || '?').trim().split(' ').filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase() || '').join('');
     const profileAvatar = h('span', { class: 'avatar profile-avatar tone-' + (state.profileTone || 'lime'), 'aria-label': 'Profile avatar' }, initials || '?');
     const editProfile = () => modal('Edit your profile', (box, close) => {
       const nameInput = h('input', { class: 'input', value: u?.name || '', maxlength: '48', autocomplete: 'name', placeholder: 'Your display name' });
