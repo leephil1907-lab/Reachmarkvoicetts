@@ -3,6 +3,7 @@ import { h, icon, icons, state, save, navigate, routes, renderRoute, sheet, toas
 import './views-a.js';
 import './views-b.js';
 import { welcomeSheet } from './auth.js';
+import { mountAurora } from './gl-bg.js';
 
 /* ---------- splash ---------- */
 const splash = h('div', { id: 'splash' },
@@ -13,6 +14,18 @@ const splash = h('div', { id: 'splash' },
     h('small', { style: { color: 'var(--faint)', fontSize: '11px', letterSpacing: '.12em', textTransform: 'uppercase' } }, 'by Reachmark Digital'),
     h('div', { class: 'bars' }, [0, 1, 2, 3, 4].map(() => h('i', { style: { height: '10px' } })))));
 document.body.append(splash);
+
+// Restrained ambient shader: desktop only, with CSS fallback on mobile/low-data devices.
+const bgRoot = document.querySelector('#bg');
+const motionReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lowData = navigator.connection?.saveData === true;
+if (bgRoot && matchMedia('(min-width: 960px) and (pointer: fine)').matches && !motionReduced && !lowData) {
+  const auroraCanvas = document.createElement('canvas');
+  auroraCanvas.className = 'aurora-canvas';
+  auroraCanvas.setAttribute('aria-hidden', 'true');
+  bgRoot.prepend(auroraCanvas);
+  mountAurora(auroraCanvas, { scale: 0.7, amplitude: 0.48, scrollEl: () => document.querySelector('#view') });
+}
 
 /* ---------- sidebar ---------- */
 const NAV = [
