@@ -175,7 +175,8 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyThem
 
 /* ---------------- toasts ---------------- */
 export function toast(msg, ic = 'check', ms = 2600) {
-  const t = h('div', { class: 'toast' }, icon(ic), h('span', {}, msg));
+  const tone = ic === 'close' ? 'error' : ['check', 'badgeCheck', 'shieldCheck'].includes(ic) ? 'success' : ['clock', 'refresh'].includes(ic) ? 'pending' : 'neutral';
+  const t = h('div', { class: 'toast toast--' + tone, role: 'status', 'aria-live': tone === 'error' ? 'assertive' : 'polite' }, icon(ic), h('span', {}, msg));
   $('#toast-root').append(t);
   setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 260); }, ms);
   return t;
