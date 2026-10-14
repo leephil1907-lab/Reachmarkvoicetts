@@ -1,7 +1,7 @@
 /* Reachmark Audio — service worker
    PWABuilder checklist: registered at root scope, precached app shell, fetch handler with
    offline navigation fallback, cache-first static assets, network-only for API/auth. */
-const VERSION = 'reachmark-audio-v1.14.0';
+const VERSION = 'reachmark-audio-v1.14.1';
 const SHELL = [
   '/', '/index.html', '/css/app.css', '/manifest.webmanifest',
   '/js/main.js', '/js/core.js', '/js/audio.js', '/js/brain.js', '/js/auth.js', '/js/views-a.js', '/js/views-b.js', '/js/gl-bg.js',
@@ -12,12 +12,25 @@ const SHELL = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Cache each shell asset independently: one optional/missing image must not
+  // prevent the whole worker from installing. Never cache failed responses.
+  e.waitUntil(caches.open(VERSION).then(async c => {
+    await Promise.all(SHELL.map(async path => {
+      try {
+        const response = await fetch(path, { cache: 'reload' });
+        if (response && response.ok && response.type === 'basic') await c.put(path, response);
+      } catch { /* offline or optional asset; navigation fallback still works */ }
+    }));
+    await self.skipWaiting();
+  }));
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
-    .then(() => self.clients.claim()));
+  // Retain independent runtime caches (fonts/outbox/catalog) across app updates.
+  // Only remove older versioned Reachmark shell caches.
+  e.waitUntil(caches.keys().then(keys => Promise.all(
+    keys.filter(k => k.startsWith('reachmark-audio-') && k !== VERSION).map(k => caches.delete(k))
+  )).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', e => {
@@ -52,14 +65,25 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  // static assets: cache-first with background refresh
-  e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-      const copy = res.clone();
-      caches.open(VERSION).then(c => c.put(e.request, copy));
-      return res;
-    }).catch(() => caches.match('/assets/icon.png')))
-  );
+  // Static assets: return cache immediately for speed, refresh in the background.
+  // Never persist errors, opaque cross-origin responses, or private/no-store data.
+  e.respondWith((async () => {
+    const cache = await caches.open(VERSION);
+    const hit = await cache.match(e.request);
+    const refresh = fetch(e.request).then(async response => {
+      const policy = response.headers.get('cache-control') || '';
+      if (response.ok && response.type === 'basic' && !/\b(no-store|private)\b/i.test(policy)) {
+        await cache.put(e.request, response.clone());
+      }
+      return response;
+    });
+    if (hit) {
+      e.waitUntil(refresh.catch(() => {}));
+      return hit;
+    }
+    try { return await refresh; }
+    catch { return new Response('Asset unavailable offline', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } }); }
+  })());
 });
 
 /* ---------- push notifications (Reachmark announcements) ---------- */

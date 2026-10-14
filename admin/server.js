@@ -208,6 +208,81 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/me' && req.method === 'GET') return json(res, 200, { user: pubAdmin(me), csrf: ses.csrf, llm: llm.configured() });
       if (p === '/api/stats' && req.method === 'GET') return json(res, 200, await stats());
 
+      /* ---------- private voice cloning lab (admin-only; real worker required) ---------- */
+      if (p === '/api/voice-lab/status' && req.method === 'GET') {
+        if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
+        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\/+$/, '');
+        const token = process.env.VOICE_CLONE_WORKER_TOKEN || '';
+        if (!base || !token) return json(res, 200, { ready: false, authenticated: false, reason: 'worker_not_configured', voices: [] });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        try {
+          const h = await fetch(base + '/v1/health', { headers: { 'X-Worker-Token': token }, signal: controller.signal });
+          if (!h.ok) return json(res, 200, { ready: false, authenticated: false, reason: 'worker_unavailable', voices: [] });
+          const health = await h.json();
+          if (health.ok !== true || health.ready !== true) return json(res, 200, { ready: false, authenticated: true, reason: 'engine_not_ready', engine: health.engine || null, device: health.device || null, voices: [] });
+          const vr = await fetch(base + '/v1/voices', { headers: { 'X-Worker-Token': token }, signal: controller.signal });
+          const voiceData = vr.ok ? await vr.json() : { voices: [] };
+          return json(res, 200, { ready: true, authenticated: true, engine: health.engine || 'Voice clone worker', device: health.device || 'unknown', voices: Array.isArray(voiceData.voices) ? voiceData.voices : [] });
+        } catch {
+          return json(res, 200, { ready: false, authenticated: false, reason: 'worker_unreachable', voices: [] });
+        } finally { clearTimeout(timer); }
+      }
+      if (p === '/api/voice-lab/clone' && req.method === 'POST') {
+        if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
+        const b = await body(MAX_BODY);
+        if (b.consent !== true) return json(res, 400, { error: 'Confirm that you own or have permission to clone this voice.' });
+        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\/+$/, '');
+        const token = process.env.VOICE_CLONE_WORKER_TOKEN || '';
+        if (!base || !token) return json(res, 503, { error: 'Voice clone worker is not configured. No sample was processed.' });
+        const raw = b64ToBuf(b.sample || '');
+        if (!raw.length || raw.length > MAX_UPLOAD) return json(res, raw.length ? 413 : 400, { error: 'Provide an audio sample up to 20 MB.' });
+        if (raw.toString('ascii', 0, 4) !== 'RIFF' || raw.toString('ascii', 8, 12) !== 'WAVE') return json(res, 415, { error: 'Please upload a PCM WAV sample for this first worker version.' });
+        if (wavSeconds(raw) < 3 || wavSeconds(raw) > 60) return json(res, 422, { error: 'Use a clean WAV sample between 3 and 60 seconds.' });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 180000);
+        try {
+          const wr = await fetch(base + '/v1/clone', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Worker-Token': token }, body: JSON.stringify({ name: str(b.name, 60) || 'Private test voice', notes: str(b.notes, 200) || '', sample_base64: raw.toString('base64'), consent: true }), signal: controller.signal });
+          const out = await wr.json().catch(() => ({}));
+          if (!wr.ok) return json(res, wr.status >= 400 && wr.status < 500 ? wr.status : 502, { error: str(out.error || out.detail, 300) || 'Clone worker failed to create the voice profile.' });
+          if (!out.voice || !/^[a-zA-Z0-9_-]{1,80}$/.test(String(out.voice.id || ''))) return json(res, 502, { error: 'Clone worker returned an invalid voice profile.' });
+          const voice = { ...out.voice, uid: undefined, kind: 'clone', engine: 'cosyvoice3', engineVoiceId: out.voice.id, desc: 'CosyVoice 3 clone · private admin test', created: Date.now() };
+          store.voices.add(me.id, voice);
+          log('voice-lab.clone', voice.id, { name: voice.name || '', engine: 'cosyvoice3' });
+          return json(res, 200, { voice: { id: voice.id, name: voice.name, engine: voice.engine, created: voice.created } });
+        } catch (e) {
+          return json(res, 502, { error: e.name === 'AbortError' ? 'Voice cloning timed out. Check the worker logs and try a shorter sample.' : 'Could not reach the voice clone worker.' });
+        } finally { clearTimeout(timer); }
+      }
+      if (p === '/api/voice-lab/synthesize' && req.method === 'POST') {
+        if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
+        const b = await body(1e5);
+        const voiceId = String(b.voiceId || '');
+        const text = String(b.text || '').trim().slice(0, 1200);
+        if (!/^[a-zA-Z0-9_-]{1,80}$/.test(voiceId) || !text) return json(res, 400, { error: 'Choose a saved voice and enter a test phrase.' });
+        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\/+$/, '');
+        const token = process.env.VOICE_CLONE_WORKER_TOKEN || '';
+        if (!base || !token) return json(res, 503, { error: 'Voice clone worker is not configured.' });
+        const style = oneOf(str(b.style, 24), ['conversational', 'warm', 'excited', 'empathetic', 'calm'], 'conversational');
+        const pacing = oneOf(str(b.pacing, 16), ['natural', 'measured', 'brisk'], 'natural');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 120000);
+        try {
+          const wr = await fetch(base + '/v1/synthesize', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Worker-Token': token }, body: JSON.stringify({ voice_id: voiceId, text, style, pacing }), signal: controller.signal });
+          if (!wr.ok) {
+            const out = await wr.json().catch(() => ({}));
+            return json(res, wr.status >= 400 && wr.status < 500 ? wr.status : 502, { error: str(out.error || out.detail, 300) || 'Speech generation failed.' });
+          }
+          const audio = Buffer.from(await wr.arrayBuffer());
+          if (audio.length < 44 || audio.length > 40 * 1024 * 1024 || audio.toString('ascii', 0, 4) !== 'RIFF' || audio.toString('ascii', 8, 12) !== 'WAVE') return json(res, 502, { error: 'Voice worker returned invalid WAV audio.' });
+          const file = saveRender(audio, 'adm_clone', me.id);
+          log('voice-lab.synthesize', voiceId, { chars: text.length, style, pacing });
+          return json(res, 200, { audioUrl: '/api/studio/render/' + file });
+        } catch (e) {
+          return json(res, 502, { error: e.name === 'AbortError' ? 'Speech generation timed out.' : 'Could not reach the voice clone worker.' });
+        } finally { clearTimeout(timer); }
+      }
+
       /* ---------- users ---------- */
       if (p === '/api/users' && req.method === 'GET') {
         const q = (u.searchParams.get('q') || '').toLowerCase();
