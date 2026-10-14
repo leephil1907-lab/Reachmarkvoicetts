@@ -20,12 +20,17 @@ function transport() {
   try {
     const nodemailer = require('nodemailer');
     if (process.env.SMTP_URL) {
-      transporter = nodemailer.createTransport(process.env.SMTP_URL);
+      transporter = nodemailer.createTransport(process.env.SMTP_URL, { family: 4, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000 });
     } else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       const port = Number(process.env.SMTP_PORT || 587);
       transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST, port,
         secure: port === 465,
+        // Railway containers can prefer unreachable IPv6 SMTP endpoints; pin SMTP to IPv4.
+        family: 4,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 20000,
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
         tls: { minVersion: 'TLSv1.2' },
         pool: true, maxConnections: 3,
