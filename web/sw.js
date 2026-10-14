@@ -1,7 +1,7 @@
 /* Reachmark Audio — service worker
    PWABuilder checklist: registered at root scope, precached app shell, fetch handler with
    offline navigation fallback, cache-first static assets, network-only for API/auth. */
-const VERSION = 'reachmark-audio-v1.10.0';
+const VERSION = 'reachmark-audio-v1.11.0';
 const SHELL = [
   '/', '/index.html', '/css/app.css', '/manifest.webmanifest',
   '/js/main.js', '/js/core.js', '/js/audio.js', '/js/brain.js', '/js/auth.js', '/js/views-a.js', '/js/views-b.js', '/js/gl-bg.js',
@@ -70,14 +70,26 @@ self.addEventListener('push', e => {
     body: data.body || 'New from Reachmark Digital',
     icon: '/assets/icon-192.png',
     badge: '/assets/icon-96.png',
-    data: { url: data.url || '/' },
+    tag: data.tag || 'reachmark-announcement',
+    renotify: Boolean(data.renotify),
+    actions: [
+      { action: 'open', title: 'Open Reachmark' },
+      { action: 'dismiss', title: 'Dismiss' },
+    ],
+    data: { url: data.url || '/#home' },
   }));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || '/';
+  if (e.action === 'dismiss') return;
+  const url = (e.notification.data && e.notification.data.url) || '/#home';
   e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    for (const c of list) { if ('focus' in c) { try { c.navigate(url); } catch {} return c.focus(); } }
+    for (const c of list) {
+      if ('focus' in c) {
+        try { c.navigate(url); } catch {}
+        return c.focus();
+      }
+    }
     return clients.openWindow(url);
   }));
 });
