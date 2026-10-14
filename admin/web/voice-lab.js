@@ -16,7 +16,7 @@ VIEWS['voice-lab'] = async el => {
     </section>
     <div id="vl-worker-warning" class="vl-notice vl-blocked" role="status">
       <strong>Real cloning engine not connected yet.</strong>
-      This workspace will not label a pitch-matched Piper preset as a clone. Connect the private GPU/voice worker before processing a sample.
+      This workspace will not label a pitch-matched Piper preset as a clone. Connect the private GPU/voice worker before processing a sample. Delivery presets currently adjust phrasing and pace; they are not full emotional acting controls.
     </div>
     <div class="vl-layout" style="margin-top:14px">
       <section class="vl-panel">
@@ -26,8 +26,8 @@ VIEWS['voice-lab'] = async el => {
         </label>
         <label class="vl-drop" for="vl-sample">
           <strong id="vl-file-name">Choose a clean voice sample</strong>
-          <small>WAV recommended · 10–30 seconds · one speaker · quiet room</small>
-          <input id="vl-sample" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/webm,audio/ogg">
+          <small>PCM WAV only · 10–30 seconds · one speaker · quiet room</small>
+          <input id="vl-sample" type="file" accept=".wav,audio/wav,audio/x-wav">
         </label>
         <label class="vl-field">Voice notes (optional)
           <input id="vl-notes" maxlength="200" placeholder="Warm, clear, low-key…">
