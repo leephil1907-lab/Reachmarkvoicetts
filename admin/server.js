@@ -211,7 +211,7 @@ const server = http.createServer(async (req, res) => {
       /* ---------- private voice cloning lab (admin-only; real worker required) ---------- */
       if (p === '/api/voice-lab/status' && req.method === 'GET') {
         if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
-        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\\/+$/, '');
+        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\/+$/, '');
         const token = process.env.VOICE_CLONE_WORKER_TOKEN || '';
         if (!base || !token) return json(res, 200, { ready: false, authenticated: false, reason: 'worker_not_configured', voices: [] });
         const controller = new AbortController();
@@ -232,7 +232,7 @@ const server = http.createServer(async (req, res) => {
         if (!isAdmin) return json(res, 403, { error: 'Admin role required.' });
         const b = await body(MAX_BODY);
         if (b.consent !== true) return json(res, 400, { error: 'Confirm that you own or have permission to clone this voice.' });
-        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\\/+$/, '');
+        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\/+$/, '');
         const token = process.env.VOICE_CLONE_WORKER_TOKEN || '';
         if (!base || !token) return json(res, 503, { error: 'Voice clone worker is not configured. No sample was processed.' });
         const raw = b64ToBuf(b.sample || '');
@@ -244,7 +244,7 @@ const server = http.createServer(async (req, res) => {
         try {
           const wr = await fetch(base + '/v1/clone', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Worker-Token': token }, body: JSON.stringify({ name: str(b.name, 60) || 'Private test voice', notes: str(b.notes, 200) || '', sample_base64: raw.toString('base64'), consent: true }), signal: controller.signal });
           const out = await wr.json().catch(() => ({}));
-          if (!wr.ok) return json(res, wr.status >= 400 && wr.status < 500 ? wr.status : 502, { error: str(out.error, 300) || 'Clone worker failed to create the voice profile.' });
+          if (!wr.ok) return json(res, wr.status >= 400 && wr.status < 500 ? wr.status : 502, { error: str(out.error || out.detail, 300) || 'Clone worker failed to create the voice profile.' });
           if (!out.voice || !/^[a-zA-Z0-9_-]{1,80}$/.test(String(out.voice.id || ''))) return json(res, 502, { error: 'Clone worker returned an invalid voice profile.' });
           const voice = { ...out.voice, uid: undefined, kind: 'clone', engine: 'openvoice', engineVoiceId: out.voice.id, desc: 'OpenVoice clone · private admin test', created: Date.now() };
           store.voices.add(me.id, voice);
@@ -260,7 +260,7 @@ const server = http.createServer(async (req, res) => {
         const voiceId = String(b.voiceId || '');
         const text = String(b.text || '').trim().slice(0, 1200);
         if (!/^[a-zA-Z0-9_-]{1,80}$/.test(voiceId) || !text) return json(res, 400, { error: 'Choose a saved voice and enter a test phrase.' });
-        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\\/+$/, '');
+        const base = (process.env.VOICE_CLONE_WORKER_URL || '').replace(/\/+$/, '');
         const token = process.env.VOICE_CLONE_WORKER_TOKEN || '';
         if (!base || !token) return json(res, 503, { error: 'Voice clone worker is not configured.' });
         const style = oneOf(str(b.style, 24), ['conversational', 'warm', 'excited', 'empathetic', 'calm'], 'conversational');
@@ -271,7 +271,7 @@ const server = http.createServer(async (req, res) => {
           const wr = await fetch(base + '/v1/synthesize', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Worker-Token': token }, body: JSON.stringify({ voice_id: voiceId, text, style, pacing }), signal: controller.signal });
           if (!wr.ok) {
             const out = await wr.json().catch(() => ({}));
-            return json(res, wr.status >= 400 && wr.status < 500 ? wr.status : 502, { error: str(out.error, 300) || 'Speech generation failed.' });
+            return json(res, wr.status >= 400 && wr.status < 500 ? wr.status : 502, { error: str(out.error || out.detail, 300) || 'Speech generation failed.' });
           }
           const audio = Buffer.from(await wr.arrayBuffer());
           if (audio.length < 44 || audio.length > 40 * 1024 * 1024 || audio.toString('ascii', 0, 4) !== 'RIFF' || audio.toString('ascii', 8, 12) !== 'WAVE') return json(res, 502, { error: 'Voice worker returned invalid WAV audio.' });
