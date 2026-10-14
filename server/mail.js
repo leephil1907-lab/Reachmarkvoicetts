@@ -1,11 +1,4 @@
-// Reachmark Audio — outbound mail via SMTP (nodemailer), with graceful fallback.
-// Configure with env (never in code, never in git):
-//   SMTP_HOST (e.g. smtp.gmail.com)  SMTP_PORT (587 STARTTLS / 465 TLS)
-//   SMTP_USER (e.g. reachmarkofficial@gmail.com)  SMTP_PASS (app password)
-//   — or a single SMTP_URL (smtps://user:pass@host:port)
-//   MAIL_FROM (optional display-from; Gmail rewrites to the authenticated account)
-// Without SMTP config, messages are appended to data/outbox.log so nothing is lost
-// and any MTA/relay can be wired later.
+// Reachmark Audio — transactional email via Resend HTTPS API, with SMTP fallback.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -24,36 +17,69 @@ function transport() {
     } else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       const port = Number(process.env.SMTP_PORT || 587);
       transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST, port,
-        secure: port === 465,
-        // Railway containers can prefer unreachable IPv6 SMTP endpoints; pin SMTP to IPv4.
-        family: 4,
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 20000,
+        host: process.env.SMTP_HOST, port, secure: port === 465, family: 4,
+        connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000,
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-        tls: { minVersion: 'TLSv1.2' },
-        pool: true, maxConnections: 3,
+        tls: { minVersion: 'TLSv1.2' }, pool: true, maxConnections: 3,
       });
     }
-  } catch (e) { console.error('[mail] transport init failed:', e.message); }
+  } catch (e) { console.error('[mail] SMTP transport init failed:', e.message); }
   return transporter;
 }
-const fromAddr = () => process.env.MAIL_FROM || ('Reachmark Audio <' + (process.env.SMTP_USER || 'no-reply@reachmark.audio') + '>');
+
+const fromAddr = () => process.env.MAIL_FROM || 'Reachmark Voice <verification@reachmarkdigital.xyz>';
+
+async function sendWithResend({ to, subject, html, text }) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + process.env.RESEND_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from: fromAddr(), to: [to], subject, ...(html ? { html } : {}), ...(text ? { text } : {}) }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = body.message || body.name || ('HTTP ' + response.status);
+    throw new Error('Resend rejected email (' + response.status + '): ' + message);
+  }
+  if (!body.id) throw new Error('Resend returned no email ID');
+  return { sent: true, provider: 'resend', id: body.id };
+}
 
 async function send({ to, subject, html, text }) {
-  const t = transport();
-  if (t && to) {
+  if (!to || !subject || (!html && !text)) {
+    console.error('[mail] Refusing email with missing recipient, subject, or body.');
+    return { sent: false, error: 'Missing recipient, subject, or body' };
+  }
+
+  // Prefer the transactional HTTPS API; SMTP remains a fallback for existing setups.
+  if (process.env.RESEND_API_KEY) {
     try {
-      await t.sendMail({ from: fromAddr(), to, subject, html, text });
-      return { sent: true };
+      const result = await sendWithResend({ to, subject, html, text });
+      console.info('[mail] Resend accepted message:', result.id);
+      return result;
     } catch (e) {
-      console.error('[mail] SMTP send failed for', to, '-', e.message);
+      console.error('[mail] Resend send failed:', e.message);
     }
   }
+
+  const t = transport();
+  if (t) {
+    try {
+      const result = await t.sendMail({ from: fromAddr(), to, subject, html, text });
+      return { sent: true, provider: 'smtp', id: result.messageId || null };
+    } catch (e) {
+      console.error('[mail] SMTP send failed:', e.message);
+    }
+  }
+
+  // Diagnostic archive only: writing here is NOT email delivery.
   try { fs.appendFileSync(OUTBOX, `Date: ${new Date().toISOString()}\nTo: ${to}\nSubject: ${subject}\n\n${text || ''}\n--\n`); } catch {}
-  return { sent: false };
+  return { sent: false, error: 'All configured email providers failed' };
 }
-const configured = () => !!transport();
+
+const configured = () => !!process.env.RESEND_API_KEY || !!transport();
 
 module.exports = { send, configured };
