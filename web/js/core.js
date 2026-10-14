@@ -48,6 +48,7 @@ export const icons = {
   circleUser: I('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="9" r="3"/><path d="M6.5 19a6 6 0 0 1 11 0"/>'),
   panelsTopLeft: I('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M9 9h12"/>'),
   fileAudio: I('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 15v3M11 12v6M14 14v4M17 13v5"/>'),
+  brandMark: '<svg viewBox="0 0 64 64" width="64" height="64" fill="none" aria-hidden="true" focusable="false"><rect x="2" y="2" width="60" height="60" rx="17" fill="#C9F36A"/><path d="M15 49V15h13c9 0 12 13 1 16H15m14 0 9 18" stroke="#171A16" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M43 28v8m5-15v22m5-15v8" stroke="#171A16" stroke-width="3.5" stroke-linecap="round"/></svg>',
 
   micStudio: I('<rect x="8" y="2.5" width="8" height="12.5" rx="4"/><path d="M4.5 11a7.5 7.5 0 0 0 15 0M12 18.5V22M8 22h8M8 6.5h8M8 9.5h8"/>'),
   upload: I('<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>'),
