@@ -94,7 +94,7 @@ export class Player {
       else if (e.key === 'End') this.audio.currentTime = duration;
       else {
         const step = e.shiftKey || e.key.startsWith('Page') ? 5 : 1;
-        this.audio.currentTime = Math.max(0, Math.min(duration, this.audio.currentTime + (e.key === 'ArrowLeft' || e.key === 'PageDown' ? -step : step));
+        this.audio.currentTime = Math.max(0, Math.min(duration, this.audio.currentTime + (e.key === 'ArrowLeft' || e.key === 'PageDown' ? -step : step)));
       }
       this.updateTime(); this.draw();
     });
