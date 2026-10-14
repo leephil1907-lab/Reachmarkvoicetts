@@ -28,6 +28,13 @@ jobs:
           sudo apt-get install --yes imagemagick
       - name: Install locked dependencies
         run: npm ci
+      - name: Check server and browser JavaScript syntax
+        run: |
+          node --check server/server.js
+          node --check server/db.js
+          node --check server/telephony.js
+          node --check server/secretbox.js
+          for file in web/js/*.js; do node --input-type=module --check < "$file"; done
       - name: Run integration tests
         run: npm test
       - name: Audit PWA and security checklist
