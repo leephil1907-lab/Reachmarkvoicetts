@@ -1,4 +1,5 @@
 // Reachmark Audio — client audio engine: recorder, waveform players, TTS bridge, lip-sync renderer.
+// Playback controls are styled and labelled by the shared UI runtime.
 import { h, icons, toast, setCredits } from './core.js';
 
 export const AC = window.AudioContext ? new AudioContext() : null;
