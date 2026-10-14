@@ -246,9 +246,9 @@ const server = http.createServer(async (req, res) => {
           const out = await wr.json().catch(() => ({}));
           if (!wr.ok) return json(res, wr.status >= 400 && wr.status < 500 ? wr.status : 502, { error: str(out.error || out.detail, 300) || 'Clone worker failed to create the voice profile.' });
           if (!out.voice || !/^[a-zA-Z0-9_-]{1,80}$/.test(String(out.voice.id || ''))) return json(res, 502, { error: 'Clone worker returned an invalid voice profile.' });
-          const voice = { ...out.voice, uid: undefined, kind: 'clone', engine: 'openvoice', engineVoiceId: out.voice.id, desc: 'OpenVoice clone · private admin test', created: Date.now() };
+          const voice = { ...out.voice, uid: undefined, kind: 'clone', engine: 'cosyvoice3', engineVoiceId: out.voice.id, desc: 'CosyVoice 3 clone · private admin test', created: Date.now() };
           store.voices.add(me.id, voice);
-          log('voice-lab.clone', voice.id, { name: voice.name || '', engine: 'openvoice' });
+          log('voice-lab.clone', voice.id, { name: voice.name || '', engine: 'cosyvoice3' });
           return json(res, 200, { voice: { id: voice.id, name: voice.name, engine: voice.engine, created: voice.created } });
         } catch (e) {
           return json(res, 502, { error: e.name === 'AbortError' ? 'Voice cloning timed out. Check the worker logs and try a shorter sample.' : 'Could not reach the voice clone worker.' });
