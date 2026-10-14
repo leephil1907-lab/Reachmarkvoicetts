@@ -17,20 +17,20 @@ document.body.append(splash);
 /* ---------- sidebar ---------- */
 const NAV = [
   ['Studio', [
-    ['/studio/tts', 'text', 'Text to Speech', 'Type it — any voice, any language'],
-    ['/studio/changer', 'swap', 'Voice Changer', 'Pitch, timbre & FX chains'],
-    ['/studio/clone', 'copy', 'Voice Match', 'Clone a voice from 10 seconds'],
-    ['/studio/design', 'wand', 'Voice Design', 'Design a voice from plain traits'],
-    ['/studio/dub', 'globe', 'Dubbing Studio', 'Translate & re-voice video'],
-    ['/studio/lip', 'film', 'Lip Sync Studio', 'Match speech to footage'],
-    ['/studio/separate', 'separate', 'Quick Vocal Remove', 'Strip vocals from stereo mixes']]],
+    ['/studio/tts', 'audioLines', 'Text to Speech', 'Type it — any voice, any language'],
+    ['/studio/changer', 'audioWaveform', 'Voice Changer', 'Pitch, timbre & FX chains'],
+    ['/studio/clone', 'fingerprint', 'Voice Match', 'Clone a voice from 10 seconds'],
+    ['/studio/design', 'wandSparkles', 'Voice Design', 'Design a voice from plain traits'],
+    ['/studio/dub', 'languages', 'Dubbing Studio', 'Translate & re-voice video'],
+    ['/studio/lip', 'video', 'Lip Sync Studio', 'Match speech to footage'],
+    ['/studio/separate', 'sliders', 'Quick Vocal Remove', 'Strip vocals from stereo mixes']]],
   ['Explore', [
     ['/discover', 'compass', 'Discover Voices', 'Browse the shared voice library'],
     ['/agents', 'bot', 'Character Agents', 'Personas that chat & call']]],
   ['Help', [['/support', 'lifebuoy', 'Support Center', 'Live chat & support sessions']]],
   ['System', [
     ['/engines', 'cpu', 'Engine Hub', 'Engine status & merge map'],
-    ['/account', 'user', 'Account', 'Plan, credits & security']]],
+    ['/account', 'userRound', 'Account', 'Plan, credits & security']]],
 ];
 const sb = document.querySelector('#sidebar');
 sb.append(h('div', { class: 'brand' },
@@ -48,7 +48,7 @@ sb.append(h('div', { class: 'side-foot' },
 
 /* ---------- tabbar ---------- */
 const tb = document.querySelector('#tabbar');
-const TABS = [['home', 'home', 'Home', '/home'], ['create', 'plus', 'Create', null], ['discover', 'compass', 'Voices', '/discover'], ['agents', 'bot', 'Agents', '/agents'], ['account', 'user', 'Account', '/account']];
+const TABS = [['home', 'panelsTopLeft', 'Home', '/home'], ['create', 'plus', 'Create', null], ['discover', 'compass', 'Voices', '/discover'], ['agents', 'bot', 'Agents', '/agents'], ['account', 'userRound', 'Account', '/account']];
 for (const [key, ic, label, path] of TABS) tb.append(h('button', { class: 'tab', dataset: { tab: key }, onclick: () => path ? navigate(path) : createSheet() }, icon(ic), label));
 
 /* ---------- support FAB ---------- */
@@ -59,13 +59,13 @@ document.body.append(fabSupport);
 export function createSheet() {
   sheet('Create', (box, close) => {
     const rows = [
-      ['text', 'Text to Speech', 'Type it, hear it in any voice & language', '/studio/tts'],
-      ['copy', 'Voice Match', 'Match a neural voice to you from 10s of audio', '/studio/clone'],
-      ['wand', 'Voice Design', 'Describe the voice in plain text.', '/studio/design'],
-      ['swap', 'Voice Changer', 'Upload or record, convert the voice', '/studio/changer'],
-      ['globe', 'Dubbing Studio', 'One script, every language', '/studio/dub'],
-      ['film', 'Lip Sync Studio', 'Animate a character with audio', '/studio/lip'],
-      ['separate', 'Quick Vocal Remove', 'Center-channel vocal reduction (stereo)', '/studio/separate'],
+      ['audioLines', 'Text to Speech', 'Type it, hear it in any voice & language', '/studio/tts'],
+      ['fingerprint', 'Voice Match', 'Match a neural voice to you from 10s of audio', '/studio/clone'],
+      ['wandSparkles', 'Voice Design', 'Describe the voice in plain text.', '/studio/design'],
+      ['audioWaveform', 'Voice Changer', 'Upload or record, convert the voice', '/studio/changer'],
+      ['languages', 'Dubbing Studio', 'One script, every language', '/studio/dub'],
+      ['video', 'Lip Sync Studio', 'Animate a character with audio', '/studio/lip'],
+      ['sliders', 'Quick Vocal Remove', 'Center-channel vocal reduction (stereo)', '/studio/separate'],
       ['bot', 'Character Agent', 'Build a persona that talks & calls', '/agents'],
     ];
     for (const [ic, b, s, path] of rows) {
@@ -81,20 +81,20 @@ window.__createSheet = createSheet;
 /* ---------- command palette ---------- */
 function palette() {
   const actions = [
-    ['Go to Dashboard', 'home', () => navigate('/home')],
-    ['Text to Speech', 'text', () => navigate('/studio/tts')],
-    ['Instant Voice Clone', 'copy', () => navigate('/studio/clone')],
-    ['Voice Changer', 'swap', () => navigate('/studio/changer')],
-    ['Voice Design', 'wand', () => navigate('/studio/design')],
-    ['Dubbing Studio', 'globe', () => navigate('/studio/dub')],
-    ['Lip Sync Studio', 'film', () => navigate('/studio/lip')],
-    ['Audio Separation', 'separate', () => navigate('/studio/separate')],
+    ['Go to Dashboard', 'panelsTopLeft', () => navigate('/home')],
+    ['Text to Speech', 'audioLines', () => navigate('/studio/tts')],
+    ['Instant Voice Clone', 'fingerprint', () => navigate('/studio/clone')],
+    ['Voice Changer', 'audioWaveform', () => navigate('/studio/changer')],
+    ['Voice Design', 'wandSparkles', () => navigate('/studio/design')],
+    ['Dubbing Studio', 'languages', () => navigate('/studio/dub')],
+    ['Lip Sync Studio', 'video', () => navigate('/studio/lip')],
+    ['Audio Separation', 'sliders', () => navigate('/studio/separate')],
     ['Discover Voices', 'compass', () => navigate('/discover')],
     ['Character Agents', 'bot', () => navigate('/agents')],
     ['Chat with Guide', 'send', () => navigate('/agent/guide')],
     ['Support Center', 'lifebuoy', () => navigate('/support')],
     ['Engine Hub', 'cpu', () => navigate('/engines')],
-    ['Account & plan', 'user', () => navigate('/account')],
+    ['Account & plan', 'userRound', () => navigate('/account')],
     ['Toggle theme', 'moon', () => { const o = ['dark', 'light', 'system']; state.theme = o[(o.indexOf(state.theme) + 1) % 3]; save(); applyTheme(); toast('Theme: ' + state.theme, 'moon'); }],
     ['Log out', 'logout', () => logout()],
   ];
