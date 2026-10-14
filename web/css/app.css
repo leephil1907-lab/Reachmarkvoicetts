@@ -890,3 +890,27 @@ input,textarea{user-select:text;-webkit-user-select:text}
 .gate-top .brand-mark{width:40px;height:40px;border-radius:12px;background:none;box-shadow:none}
 .dash-logo.brand-mark{display:grid;overflow:hidden;border-radius:15px;box-shadow:none;background:none}
 .dash-logo.brand-mark svg{width:100%;height:100%}
+
+/* ---------- unified micro-interactions, empty states & status feedback ---------- */
+.empty{gap:0;padding:38px 22px}
+.empty-mark{display:grid;place-items:center;width:76px;height:76px;margin:0 0 18px;border:1px solid color-mix(in srgb,var(--lime) 24%,var(--line));border-radius:24px;background:color-mix(in srgb,var(--lime) 9%,var(--surface));color:var(--lime-deep);box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 5%,transparent)}
+.empty-mark svg{width:34px;height:34px;opacity:1;margin:0;stroke-dasharray:none;stroke-dashoffset:0;animation:none}
+.empty b{color:var(--text);font-size:18px;letter-spacing:-.025em}
+.empty-copy{display:block;margin-top:8px;max-width:300px;line-height:1.65}
+.toast{border:1px solid color-mix(in srgb,var(--line2) 70%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.toast svg{width:17px;height:17px}
+.toast--success{background:color-mix(in srgb,var(--lime) 92%,#fff 8%);color:#18200d;border-color:color-mix(in srgb,var(--lime) 45%,transparent)}
+.toast--error{background:color-mix(in srgb,var(--red) 14%,var(--surface));color:var(--text);border-color:color-mix(in srgb,var(--red) 40%,var(--line))}
+.toast--error svg{color:var(--red)}
+.toast--pending{background:var(--surface);color:var(--text);border-color:color-mix(in srgb,var(--orange) 38%,var(--line))}
+.toast--pending svg{color:var(--orange)}
+.player{gap:11px;transition:border-color .2s ease,background .2s ease}
+.player:focus-within{border-color:color-mix(in srgb,var(--lime) 45%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--lime) 8%,transparent)}
+.player .pbtn{width:42px;height:42px;box-shadow:0 1px 2px #00000012}
+.player .pbtn:hover{transform:scale(1.04)}
+.player .pbtn:focus-visible,.player canvas:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.player canvas{border-radius:8px;touch-action:pan-y}
+.player .ptime{min-width:76px;text-align:right;white-space:nowrap}
+@media(max-width:520px){.player{gap:8px;padding:9px}.player .pbtn{width:38px;height:38px}.player canvas{height:36px}.player .ptime{font-size:10px;min-width:68px}}
+@media(prefers-reduced-motion:reduce){.toast,.empty-mark,.player,.player .pbtn{animation:none!important;transition:none!important}}
+
