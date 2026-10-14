@@ -213,7 +213,9 @@ routes['/agents'] = {
           h('button', { class: 'iconbtn', html: icons.phone, 'aria-label': 'Call', onclick: () => navigate('/call/' + a.id) }),
           h('button', { class: 'iconbtn', html: icons.send, 'aria-label': 'Chat', onclick: () => navigate('/agent/' + a.id) }));
         const card = h('div', { class: 'card', style: { display: 'flex', gap: '13px', alignItems: 'center' } },
-          h('span', { class: 'avatar ' + (a.av || '') }, icons[a.emoji] ? h('span', { class: 'avico', html: icons[a.emoji] }) : (a.emoji || a.name[0]?.toUpperCase())),
+          a.avatarImage
+            ? h('img', { src: a.avatarImage, alt: a.name + ' avatar', style: { width: '54px', height: '54px', flex: '0 0 54px', borderRadius: '16px', objectFit: 'cover', border: '1px solid var(--line2)' } })
+            : h('span', { class: 'avatar ' + (a.av || '') }, icons[a.emoji] ? h('span', { class: 'avico', html: icons[a.emoji] }) : (a.emoji || a.name[0]?.toUpperCase())),
           h('div', { style: { flex: 1, minWidth: 0 } },
             h('b', {}, a.name, a.system ? h('span', { class: 'badge', style: { marginLeft: '8px', color: 'var(--lime)', borderColor: 'color-mix(in srgb, var(--lime) 40%, transparent)' } }, 'PLATFORM AI') : null),
             h('small', { class: 'muted', style: { display: 'block' } }, a.role),
@@ -237,6 +239,26 @@ routes['/agents'] = {
       const vSel = { id: state.defaultVoiceId };
       const AVATARS = ['micStudio', 'bot', 'user', 'star', 'film', 'wave', 'phone', 'wand'];
       const pick = { emoji: AVATARS[db.agents.length % AVATARS.length], traits: new Set() };
+      let avatarImage = null;
+      const avatarPreview = h('img', { alt: 'Agent avatar preview', hidden: true, style: { width: '76px', height: '76px', objectFit: 'cover', borderRadius: '22px', border: '1px solid var(--line2)' } });
+      const avatarStatus = h('small', { class: 'muted' }, 'Optional · PNG, JPG or WebP · image stays with your agent');
+      const avatarFile = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: { display: 'none' }, onchange: async e => {
+        const file = e.target.files?.[0]; if (!file) return;
+        if (file.size > 8 * 1024 * 1024) { toast('Choose an image under 8 MB', 'close'); e.target.value = ''; return; }
+        if (!/^image\\/(png|jpeg|webp)$/.test(file.type)) { toast('Use a PNG, JPG or WebP image', 'close'); e.target.value = ''; return; }
+        try {
+          const source = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+          const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = source; });
+          const scale = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight));
+          const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(img.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+          const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          avatarImage = canvas.toDataURL('image/jpeg', 0.82);
+          if (avatarImage.length > 900000) avatarImage = canvas.toDataURL('image/jpeg', 0.68);
+          avatarPreview.src = avatarImage; avatarPreview.hidden = false; avatarStatus.textContent = file.name + ' · resized and ready';
+        } catch { toast('Could not read that image. Try another file.', 'close'); }
+      } });
+      const avatarPick = h('button', { class: 'btn block', type: 'button', onclick: () => avatarFile.click() }, icon('upload'), 'Upload agent image');
+      const avatarRemove = h('button', { class: 'btn sm', type: 'button', onclick: () => { avatarImage = null; avatarPreview.removeAttribute('src'); avatarPreview.hidden = true; avatarStatus.textContent = 'Optional · PNG, JPG or WebP · image stays with your agent'; avatarFile.value = ''; } }, icon('trash'), 'Remove image');
       const avRow = h('div', { class: 'pills' });
       const drawAv = () => avRow.replaceChildren(...AVATARS.map(e => h('button', { class: 'chip avchip' + (pick.emoji === e ? ' on' : ''), 'aria-label': e, onclick: () => { pick.emoji = e; drawAv(); } }, icon(e))));
       drawAv();
@@ -246,7 +268,9 @@ routes['/agents'] = {
       drawTr();
       const langSel = { lang: 'auto' };
       box.append(h('label', { class: 'fld' }, 'Name'), name,
-        h('label', { class: 'fld' }, 'Avatar'), avRow,
+        h('label', { class: 'fld' }, 'Agent image'),
+        h('div', { class: 'card flat', style: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' } }, avatarPreview, h('div', { style: { flex: '1 1 180px', minWidth: 0 } }, avatarPick, avatarStatus, avatarFile), avatarRemove),
+        h('label', { class: 'fld' }, 'Or choose an icon'), avRow,
         h('label', { class: 'fld' }, 'Role'), role,
         h('label', { class: 'fld' }, 'Personality traits'), trRow,
         h('label', { class: 'fld' }, 'Persona'), persona,
@@ -259,7 +283,7 @@ routes['/agents'] = {
           try {
             const traits = [...pick.traits];
             const personaTxt = [persona.value.trim(), traits.length ? 'Traits: ' + traits.join(', ') + '.' : ''].filter(Boolean).join(' ');
-            const a = await addAgent({ name: name.value.trim(), role: role.value.trim() || 'Reachmark assistant', persona: personaTxt, traits, emoji: pick.emoji, language: langSel.lang, knowledge: know.value.split('\n').map(s => s.trim()).filter(Boolean), greeting: greet.value.trim() || ('Hi, ' + name.value.trim() + ' here! How can I help?'), voiceId: vSel.id?.startsWith('m:') ? null : vSel.id, model: vSel.id?.startsWith('m:') ? vSel.id.slice(2) : null, av: ['', 'warm', 'vio'][db.agents.length % 3] });
+            const a = await addAgent({ name: name.value.trim(), role: role.value.trim() || 'Reachmark assistant', persona: personaTxt, traits, emoji: pick.emoji, language: langSel.lang, knowledge: know.value.split('\n').map(s => s.trim()).filter(Boolean), greeting: greet.value.trim() || ('Hi, ' + name.value.trim() + ' here! How can I help?'), voiceId: vSel.id?.startsWith('m:') ? null : vSel.id, model: vSel.id?.startsWith('m:') ? vSel.id.slice(2) : null, av: ['', 'warm', 'vio'][db.agents.length % 3], avatarImage });
             render(); close();
             toast(a.name + ' is live', 'bot');
             navigate('/agent/' + a.id);
@@ -346,7 +370,7 @@ routes['/call/:id'] = {
       h('div', { style: { display: 'flex', justifyContent: 'space-between' } },
         h('button', { class: 'iconbtn', html: icons.close, onclick: () => navigate('/agents') }),
         h('span', { class: 'badge' }, 'REACHMARK CALL')),
-      h('div', { class: 'ringwrap' }, h('span', { class: 'halo' }), h('span', { class: 'halo' }), h('span', { class: 'avatar ' + (a.av || ''), style: { fontSize: '34px' } }, icons[a.emoji] ? h('span', { class: 'avico big', html: icons[a.emoji] }) : (a.emoji || a.name[0]))),
+      h('div', { class: 'ringwrap' }, h('span', { class: 'halo' }), h('span', { class: 'halo' }), a.avatarImage ? h('img', { src: a.avatarImage, alt: a.name + ' avatar', style: { width: '108px', height: '108px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--lime)' } }) : h('span', { class: 'avatar ' + (a.av || ''), style: { fontSize: '34px' } }, icons[a.emoji] ? h('span', { class: 'avico big', html: icons[a.emoji] }) : (a.emoji || a.name[0]))),
       h('div', { class: 'callname' }, a.name), stat, log,
       h('div', { class: 'callbar' }, micBtn, endBtn, spkBtn));
     node.append(stage);
