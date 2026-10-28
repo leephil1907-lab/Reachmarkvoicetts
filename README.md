@@ -320,3 +320,24 @@ installability, security headers and platform integrations. Run `npm run audit:p
 current measured results; do not treat this local checklist as a substitute for a browser-based
 Lighthouse or store review. Native-store IDs and cross-origin capabilities must only be added once
 real listings and controlled domains exist.
+
+
+## Gemini transcription (API)
+
+An authenticated server endpoint is available at `POST /api/transcribe` for prerecorded audio. Configure `GEMINI_API_KEY` as a server-side secret and optionally set `GEMINI_TRANSCRIBE_MODEL`. The endpoint accepts JSON with `audioBase64` (base64 audio bytes or a data URL), `mimeType`, optional `languageCodes`, optional `customVocabulary`, and `mode` (`smart` or `verbatim`). It limits audio to 20 MB and requests word timestamps and speaker attribution only for verbatim mode without custom vocabulary. Google's API does not allow smart mode with diarization/timestamps, or custom vocabulary together with diarization/timestamps. Requests are limited to five per account per 15 minutes. The transcription adapter uploads audio to Google's Files API and submits the file to the Interactions API; the user's audio is sent to Google for processing. Configure Google API access and billing/preview eligibility before enabling this endpoint.
+
+Example request body:
+
+```json
+{
+  "audioBase64": "<base64-encoded-audio>",
+  "mimeType": "audio/wav",
+  "languageCodes": ["en-US"],
+  "customVocabulary": ["Reachmark", "Reachmark Audio"],
+  "mode": "smart"
+}
+```
+
+The responsive **Audio Transcription** studio is available from the sidebar, Create menu, and command palette. It supports file upload, microphone recording where the browser allows it, language selection, optional custom vocabulary, copy-to-clipboard, and `.txt` downloads. Focused adapter tests run as part of `npm test`; live provider calls still require a valid key and eligible Google API access.
+
+Run the focused Gemini adapter tests alone with `npm run test:transcription`. They mock the provider network calls and verify validation, request authentication, response parsing, and transcription-mode constraints. They do not replace a live test using your Google API key.

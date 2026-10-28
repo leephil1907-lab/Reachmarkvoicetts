@@ -18,6 +18,7 @@ const brainS = require('./brain');
 const mail = require('./mail');
 const pushlib = require('./pushlib');
 const telephony = require('./telephony');
+const transcription = require('./transcription');
 const secretbox = require('./secretbox');
 const tpl = require('./templates');
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@reachmarkdigital.com';
@@ -587,6 +588,27 @@ const server = http.createServer(async (req, res) => {
     const needFlag = key => { if (!flags[key]) { json(res, 403, { error: 'This studio is temporarily disabled by the operator.' }); return false; } return true; };
     if (store.config.get('maintenance') === '1' && !p.startsWith('/api/support') && p !== '/api/me' && p !== '/api/agent/chat')
       return json(res, 503, { error: 'Reachmark Audio is under maintenance — please try again shortly.' });
+
+    if (p === '/api/transcribe' && req.method === 'POST') {
+      if (!store.rateLimit('transcribe:' + uid, 5, 15 * 60 * 1000))
+        return json(res, 429, { error: 'Transcription limit reached. Try again in 15 minutes.' });
+      const b = JSON.parse(await readBody(req, MAX_BODY));
+      const encoded = typeof b.audioBase64 === 'string' ? b.audioBase64 : '';
+      const raw = encoded.replace(/^data:[^;,]+;base64,/, '');
+      if (!raw || raw.length > Math.ceil(MAX_UPLOAD * 4 / 3) + 16 || !/^[A-Za-z0-9+/]*={0,2}$/.test(raw))
+        return json(res, 400, { error: 'Provide audioBase64 containing a valid base64-encoded audio file.' });
+      const audio = Buffer.from(raw, 'base64');
+      if (!audio.length || audio.length > MAX_UPLOAD)
+        return json(res, 413, { error: 'Audio exceeds the 20 MB upload limit or is empty.' });
+      const mimeType = str(b.mimeType, 80) || 'audio/wav';
+      const languageCodes = arrStr(b.languageCodes, 8, 20);
+      const customVocabulary = arrStr(b.customVocabulary, 1000, 100);
+      const result = await transcription.transcribe({
+        audio, mimeType, languageCodes, customVocabulary,
+        mode: oneOf(str(b.mode, 20), ['smart', 'verbatim'], 'smart'),
+      });
+      return json(res, 200, { ok: true, transcript: result.text, model: result.model, interactionId: result.interactionId });
+    }
 
     if (p === '/api/me') return json(res, 200, { user: pubUser(user) });
     if (p === '/api/account/profile' && req.method === 'POST') {
