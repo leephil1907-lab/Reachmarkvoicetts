@@ -17,6 +17,7 @@ async function rejects(fn, status, message) {
     process.env.GEMINI_API_KEY = 'unit-test-key';
     await rejects(() => transcribe({ audio: Buffer.alloc(0), mimeType: 'audio/wav' }), 400, 'required');
     await rejects(() => transcribe({ audio: Buffer.from('x'), mimeType: 'application/octet-stream' }), 415, 'Unsupported audio type');
+    await rejects(() => transcribe({ audio: Buffer.from('x'), mimeType: 'audio/x-m4a' }), 503, 'not configured');
     await rejects(() => transcribe({ audio: Buffer.alloc(20 * 1024 * 1024 + 1), mimeType: 'audio/wav' }), 413, '20 MB');
 
     const calls = [];
