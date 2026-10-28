@@ -2,6 +2,7 @@
 import { h, icon, icons, state, save, navigate, routes, renderRoute, sheet, toast, applyTheme, bootAuth, db, modal, logout, api } from './core.js';
 import './views-a.js';
 import './views-b.js';
+import './transcription.js';
 import { welcomeSheet } from './auth.js';
 import { mountAurora } from './gl-bg.js';
 
@@ -36,7 +37,8 @@ const NAV = [
     ['/studio/design', 'wandSparkles', 'Voice Design', 'Design a voice from plain traits'],
     ['/studio/dub', 'languages', 'Dubbing Studio', 'Translate & re-voice video'],
     ['/studio/lip', 'video', 'Lip Sync Studio', 'Match speech to footage'],
-    ['/studio/separate', 'sliders', 'Quick Vocal Remove', 'Strip vocals from stereo mixes']]],
+    ['/studio/separate', 'sliders', 'Quick Vocal Remove', 'Strip vocals from stereo mixes'],
+    ['/studio/transcribe', 'audioFile', 'Audio Transcription', 'Turn recordings into editable text']]],
   ['Explore', [
     ['/discover', 'compass', 'Discover Voices', 'Browse the shared voice library'],
     ['/agents', 'bot', 'Character Agents', 'Personas that chat & call']]],
@@ -79,6 +81,7 @@ export function createSheet() {
       ['languages', 'Dubbing Studio', 'One script, every language', '/studio/dub'],
       ['video', 'Lip Sync Studio', 'Animate a character with audio', '/studio/lip'],
       ['sliders', 'Quick Vocal Remove', 'Center-channel vocal reduction (stereo)', '/studio/separate'],
+      ['audioFile', 'Audio Transcription', 'Transcribe audio recordings with Gemini', '/studio/transcribe'],
       ['bot', 'Character Agent', 'Build a persona that talks & calls', '/agents'],
     ];
     for (const [ic, b, s, path] of rows) {
@@ -102,6 +105,7 @@ function palette() {
     ['Dubbing Studio', 'languages', () => navigate('/studio/dub')],
     ['Lip Sync Studio', 'video', () => navigate('/studio/lip')],
     ['Audio Separation', 'sliders', () => navigate('/studio/separate')],
+    ['Audio Transcription', 'audioFile', () => navigate('/studio/transcribe')],
     ['Discover Voices', 'compass', () => navigate('/discover')],
     ['Character Agents', 'bot', () => navigate('/agents')],
     ['Chat with Guide', 'send', () => navigate('/agent/guide')],
