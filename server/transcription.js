@@ -76,4 +76,4 @@ async function transcribe({ audio, mimeType, languageCodes = [], customVocabular
   return { text: transcript, model, interactionId: result.id || null };
 }
 
-module.exports = { transcribe };
+module.exports = { transcribe, normalizeMimeType };
