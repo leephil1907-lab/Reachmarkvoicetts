@@ -7,8 +7,9 @@
     "start": "./scripts/run-all.sh",
     "start:web": "node server/server.js",
     "start:admin": "node admin/server.js",
-    "test": "node tools/tests.js",
-    "audit:pwa": "node tools/pwa-audit.js"
+    "test": "node tools/transcription-unit.js && node tools/tests.js",
+    "audit:pwa": "node tools/pwa-audit.js",
+    "test:transcription": "node tools/transcription-unit.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
