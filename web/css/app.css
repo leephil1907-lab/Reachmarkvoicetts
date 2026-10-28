@@ -1036,3 +1036,21 @@ input,textarea{user-select:text;-webkit-user-select:text}
   #bg::after{opacity:.06}
   .view,.view.leaving{filter:none!important;transform:none!important}
 }
+
+/* Gemini transcription studio */
+.transcribe-hero{position:relative;overflow:hidden;padding:clamp(22px,4vw,38px);border:1px solid var(--line);border-radius:24px;background:radial-gradient(ellipse at 85% 0%,color-mix(in srgb,var(--lime) 15%,transparent),transparent 45%),var(--surface);margin-bottom:18px}
+.transcribe-eyebrow{display:flex;align-items:center;gap:8px;color:var(--lime);font-size:11px;font-weight:800;letter-spacing:.14em}
+.transcribe-hero h1{font-size:clamp(28px,4vw,42px);line-height:1.1;letter-spacing:-.045em;margin:17px 0 10px}
+.transcribe-hero p{max-width:620px;color:var(--muted);line-height:1.7;margin:0}
+.transcribe-trust{display:flex;align-items:center;gap:8px;margin-top:20px;color:var(--muted);font-size:12px}.transcribe-trust svg{width:17px;height:17px;color:var(--lime)}
+.transcribe-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:stretch}.transcribe-panel{padding:clamp(15px,2.2vw,24px);min-width:0}
+.transcribe-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:20px}.transcribe-section-head h2{font-size:16px;margin:0 0 5px;letter-spacing:-.02em}.transcribe-section-head p{margin:0}
+.transcribe-step{display:grid;place-items:center;width:32px;height:32px;border-radius:11px;background:var(--surface2);color:var(--muted);font-size:11px;font-weight:800}
+.transcribe-file-card{display:flex;align-items:center;gap:12px;width:100%;padding:16px;text-align:left;border:1px dashed var(--line2);border-radius:16px;background:var(--surface2);color:var(--text);cursor:pointer;transition:border-color .2s,transform .2s}.transcribe-file-card:hover{border-color:var(--lime);transform:translateY(-1px)}
+.transcribe-file-icon{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:13px;background:color-mix(in srgb,var(--lime) 14%,transparent);color:var(--lime)}.transcribe-file-icon svg{width:22px;height:22px}
+.transcribe-file-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}.transcribe-file-name{font-size:13px;overflow-wrap:anywhere}.transcribe-file-action{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--lime);white-space:nowrap}.transcribe-file-action svg{width:16px;height:16px}
+.transcribe-audio-preview{width:100%;margin-top:12px;height:40px}.transcribe-settings{display:grid;gap:13px;margin-top:22px}.transcribe-field{display:grid;gap:7px;font-size:12px;font-weight:700;color:var(--muted)}.transcribe-field .input{width:100%;min-width:0}
+.transcribe-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}.transcribe-actions .btn.primary{flex:1}.transcribe-privacy{display:flex;gap:7px;align-items:flex-start;margin:16px 0 0;color:var(--faint);font-size:11px;line-height:1.6}.transcribe-privacy svg{width:15px;height:15px;flex:0 0 15px}
+.transcribe-status{padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);font-size:12px;color:var(--muted);margin-bottom:12px}.transcribe-status[data-kind=error]{color:var(--red);border-color:color-mix(in srgb,var(--red) 35%,var(--line))}.transcribe-status[data-kind=success]{color:var(--lime);border-color:color-mix(in srgb,var(--lime) 35%,var(--line))}
+.transcribe-output{width:100%;min-height:300px;resize:vertical;line-height:1.7;font-size:13px;white-space:pre-wrap}.transcribe-result-actions .btn{flex:1}.transcribe-footnote{text-align:center;color:var(--faint);font-size:11px;margin:18px 0 0}
+@media(max-width:900px){.transcribe-grid{grid-template-columns:1fr}.transcribe-output{min-height:240px}}@media(max-width:480px){.transcribe-file-card{align-items:flex-start;flex-wrap:wrap}.transcribe-file-action{margin-left:56px}.transcribe-actions .btn{font-size:12px;padding-inline:11px}.transcribe-hero{border-radius:18px}}
