@@ -3,6 +3,7 @@ import { h, icon, icons, state, save, navigate, routes, renderRoute, sheet, toas
 import './views-a.js';
 import './views-b.js';
 import './transcription.js';
+import './workspace.js';
 import { welcomeSheet } from './auth.js';
 import { mountAurora } from './gl-bg.js';
 
@@ -30,22 +31,25 @@ if (bgRoot && matchMedia('(min-width: 960px) and (pointer: fine)').matches && !m
 
 /* ---------- sidebar ---------- */
 const NAV = [
-  ['Studio', [
-    ['/studio/tts', 'audioLines', 'Text to Speech', 'Type it — any voice, any language'],
-    ['/studio/changer', 'audioWaveform', 'Voice Changer', 'Pitch, timbre & FX chains'],
-    ['/studio/clone', 'fingerprint', 'Voice Match', 'Clone a voice from 10 seconds'],
+  ['Workspace', [
+    ['/home', 'panelsTopLeft', 'Dashboard', 'Your projects, voices and recent outputs']]],
+  ['Create', [
+    ['/studio/tts', 'audioLines', 'Text to Speech', 'Turn a script into a voice track'],
+    ['/studio/clone', 'fingerprint', 'Voice Match', 'Build a reusable voice from a sample'],
     ['/studio/design', 'wandSparkles', 'Voice Design', 'Design a voice from plain traits'],
+    ['/studio/changer', 'audioWaveform', 'Voice Changer', 'Transform an existing recording']]],
+  ['Audio & Video', [
+    ['/studio/transcribe', 'audioFile', 'Audio Transcription', 'Turn recordings into editable text'],
     ['/studio/dub', 'languages', 'Dubbing Studio', 'Translate & re-voice video'],
     ['/studio/lip', 'video', 'Lip Sync Studio', 'Match speech to footage'],
-    ['/studio/separate', 'sliders', 'Quick Vocal Remove', 'Strip vocals from stereo mixes'],
-    ['/studio/transcribe', 'audioFile', 'Audio Transcription', 'Turn recordings into editable text']]],
+    ['/studio/separate', 'sliders', 'Quick Vocal Remove', 'Strip vocals from stereo mixes']]],
   ['Explore', [
     ['/discover', 'compass', 'Discover Voices', 'Browse the shared voice library'],
     ['/agents', 'bot', 'Character Agents', 'Personas that chat & call']]],
-  ['Help', [['/support', 'lifebuoy', 'Support Center', 'Live chat & support sessions']]],
-  ['System', [
-    ['/engines', 'cpu', 'Engine Hub', 'Engine status & merge map'],
-    ['/account', 'userRound', 'Account', 'Plan, credits & security']]],
+  ['Account & Help', [
+    ['/account', 'userRound', 'Account & Plan', 'Credits, plan and security'],
+    ['/support', 'lifebuoy', 'Support Center', 'Help and support sessions'],
+    ['/engines', 'cpu', 'Engine Hub', 'Engine status & availability']]],
 ];
 const sb = document.querySelector('#sidebar');
 sb.append(h('div', { class: 'brand' },
