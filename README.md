@@ -320,3 +320,22 @@ installability, security headers and platform integrations. Run `npm run audit:p
 current measured results; do not treat this local checklist as a substitute for a browser-based
 Lighthouse or store review. Native-store IDs and cross-origin capabilities must only be added once
 real listings and controlled domains exist.
+
+
+## Gemini transcription (API)
+
+An authenticated server endpoint is available at `POST /api/transcribe` for prerecorded audio. Configure `GEMINI_API_KEY` as a server-side secret and optionally set `GEMINI_TRANSCRIBE_MODEL`. The endpoint accepts JSON with `audioBase64` (base64 audio bytes or a data URL), `mimeType`, optional `languageCodes`, optional `customVocabulary`, and `mode` (`smart` or `verbatim`). It limits audio to 20 MB and requests word timestamps and speaker attribution. Requests are limited to five per account per 15 minutes. The transcription adapter uploads audio to Google's Files API and submits the file to the Interactions API; the user's audio is sent to Google for processing. Configure Google API access and billing/preview eligibility before enabling this endpoint.
+
+Example request body:
+
+```json
+{
+  "audioBase64": "<base64-encoded-audio>",
+  "mimeType": "audio/wav",
+  "languageCodes": ["en-US"],
+  "customVocabulary": ["Reachmark", "Reachmark Audio"],
+  "mode": "smart"
+}
+```
+
+The endpoint is backend-ready; a user-facing upload/transcription screen and end-to-end provider tests remain separate follow-up work.
