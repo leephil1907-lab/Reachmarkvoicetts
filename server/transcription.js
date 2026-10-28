@@ -10,14 +10,27 @@ function safeError(status, message) {
   return e;
 }
 
+function normalizeMimeType(value) {
+  const mime = String(value || '').split(';', 1)[0].trim().toLowerCase();
+  const aliases = {
+    'audio/x-wav': 'audio/wav',
+    'audio/wave': 'audio/wav',
+    'audio/mp3': 'audio/mpeg',
+    'audio/x-m4a': 'audio/mp4',
+    'audio/m4a': 'audio/mp4',
+  };
+  return aliases[mime] || mime;
+}
+
 async function transcribe({ audio, mimeType, languageCodes = [], customVocabulary = [], mode = 'smart' }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw safeError(503, 'Gemini transcription is not configured. Set GEMINI_API_KEY on the server.');
 
   if (!Buffer.isBuffer(audio) || !audio.length) throw safeError(400, 'Audio data is required.');
   if (audio.length > 20 * 1024 * 1024) throw safeError(413, 'Audio exceeds the 20 MB upload limit.');
-  const allowedMime = new Set(['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/webm', 'audio/flac', 'audio/x-wav']);
-  if (!allowedMime.has(String(mimeType || '').toLowerCase())) throw safeError(415, 'Unsupported audio type. Use WAV, MP3, MP4/M4A, AAC, OGG, WebM, or FLAC.');
+  mimeType = normalizeMimeType(mimeType);
+  const allowedMime = new Set(['audio/wav', 'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/webm', 'audio/flac']);
+  if (!allowedMime.has(mimeType)) throw safeError(415, 'Unsupported audio type. Use WAV, MP3, MP4/M4A, AAC, OGG, WebM, or FLAC.');
 
   const model = process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-3.5-transcribe';
   const fileForm = new FormData();
