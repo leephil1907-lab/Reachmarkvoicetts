@@ -338,4 +338,6 @@ Example request body:
 }
 ```
 
-The endpoint is backend-ready; a user-facing upload/transcription screen and end-to-end provider tests remain separate follow-up work.
+The responsive **Audio Transcription** studio is available from the sidebar, Create menu, and command palette. It supports file upload, microphone recording where the browser allows it, language selection, optional custom vocabulary, copy-to-clipboard, and `.txt` downloads. Focused adapter tests run as part of `npm test`; live provider calls still require a valid key and eligible Google API access.
+
+Run the focused Gemini adapter tests alone with `npm run test:transcription`. They mock the provider network calls and verify validation, request authentication, response parsing, and transcription-mode constraints. They do not replace a live test using your Google API key.
