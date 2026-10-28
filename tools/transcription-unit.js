@@ -1,7 +1,7 @@
 'use strict';
 // Focused unit tests for Gemini transcription input validation and request construction.
 const assert = require('node:assert/strict');
-const { transcribe } = require('../server/transcription');
+const { transcribe, normalizeMimeType } = require('../server/transcription');
 const originalFetch = global.fetch;
 const originalKey = process.env.GEMINI_API_KEY;
 const originalModel = process.env.GEMINI_TRANSCRIBE_MODEL;
@@ -17,7 +17,10 @@ async function rejects(fn, status, message) {
     process.env.GEMINI_API_KEY = 'unit-test-key';
     await rejects(() => transcribe({ audio: Buffer.alloc(0), mimeType: 'audio/wav' }), 400, 'required');
     await rejects(() => transcribe({ audio: Buffer.from('x'), mimeType: 'application/octet-stream' }), 415, 'Unsupported audio type');
-    await rejects(() => transcribe({ audio: Buffer.from('x'), mimeType: 'audio/x-m4a' }), 503, 'not configured');
+    assert.equal(normalizeMimeType('audio/x-m4a'), 'audio/mp4');
+    assert.equal(normalizeMimeType('audio/m4a'), 'audio/mp4');
+    assert.equal(normalizeMimeType('audio/x-wav'), 'audio/wav');
+    tests += 3;
     await rejects(() => transcribe({ audio: Buffer.alloc(20 * 1024 * 1024 + 1), mimeType: 'audio/wav' }), 413, '20 MB');
 
     const calls = [];
