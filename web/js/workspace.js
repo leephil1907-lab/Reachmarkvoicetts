@@ -99,7 +99,7 @@ routes['/home'] = {
             h('span', { class: 'workspace-voice-avatar' }, (v.name || 'V').slice(0,1).toUpperCase()),
             h('span', {}, h('b', {}, v.name || 'Saved voice'), h('small', {}, v.kind === 'clone' ? 'Voice match' : (v.kind || 'Voice'))),
             icon('chevronRight'))),
-          ...(db.voices || []).length ? [] : [h('p', { class: 'workspace-muted' }, 'Your saved voices will appear here. Create a voice match or design a new voice to build your library.')],
+          ...((db.voices || []).length ? [] : [h('p', { class: 'workspace-muted' }, 'Your saved voices will appear here. Create a voice match or design a new voice to build your library.')]),
           h('button', { class: 'workspace-inline-action', onclick: () => navigate('/studio/clone') }, icon('plus'), ' Add a voice'))),
       h('section', { class: 'workspace-side-card workspace-guide-card' },
         h('span', { class: 'workspace-kicker' }, 'NEED A STARTING POINT?'),
