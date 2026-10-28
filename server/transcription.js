@@ -24,23 +24,29 @@ async function transcribe({ audio, mimeType, languageCodes = [], customVocabular
   fileForm.append('metadata', new Blob([JSON.stringify({ file: { display_name: 'reachmark-transcription' } })], { type: 'application/json' }));
   fileForm.append('file', new Blob([audio], { type: mimeType }), 'audio-upload');
 
-  const upload = await fetch(`${API_ROOT}/upload/v1beta/files?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST', body: fileForm, signal: AbortSignal.timeout(90000),
+  const upload = await fetch(`${API_ROOT}/upload/v1beta/files`, {
+    method: 'POST', headers: { 'x-goog-api-key': apiKey }, body: fileForm, signal: AbortSignal.timeout(90000),
   });
   const uploadText = await upload.text();
   let file;
   try { file = JSON.parse(uploadText); } catch { throw safeError(502, 'Gemini file upload returned an unreadable response.'); }
   if (!upload.ok || !file.uri) throw safeError(upload.status === 429 ? 429 : 502, file.error?.message || 'Gemini could not accept the audio file.');
 
-  const transcriptionConfig = {
-    mode: { type: mode === 'verbatim' ? 'verbatim' : 'smart', diarization_mode: 'speaker', timestamp_granularities: ['word'] },
-  };
+  const vocabulary = Array.isArray(customVocabulary) ? customVocabulary.slice(0, 1000).map(x => String(x).slice(0, 100)).filter(Boolean) : [];
+  // Google documents that smart mode cannot be combined with timestamps/diarization,
+  // and custom vocabulary cannot be combined with either timestamping or diarization.
+  const transcriptionMode = { type: mode === 'verbatim' ? 'verbatim' : 'smart' };
+  if (transcriptionMode.type === 'verbatim' && vocabulary.length === 0) {
+    transcriptionMode.diarization_mode = 'speaker';
+    transcriptionMode.timestamp_granularities = ['word'];
+  }
+  const transcriptionConfig = { mode: transcriptionMode };
   if (Array.isArray(languageCodes) && languageCodes.length) transcriptionConfig.language_codes = languageCodes.slice(0, 8).map(x => String(x).slice(0, 20));
-  if (Array.isArray(customVocabulary) && customVocabulary.length) transcriptionConfig.custom_vocabulary = customVocabulary.slice(0, 1000).map(x => String(x).slice(0, 100)).filter(Boolean);
+  if (vocabulary.length) transcriptionConfig.custom_vocabulary = vocabulary;
 
-  const response = await fetch(`${API_ROOT}/v1beta/interactions?key=${encodeURIComponent(apiKey)}`, {
+  const response = await fetch(`${API_ROOT}/v1beta/interactions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
       model,
       input: [{ type: 'audio', uri: file.uri, mime_type: file.mimeType || mimeType }],
